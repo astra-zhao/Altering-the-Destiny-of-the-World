@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="改命：天下"
-config/description="v0.2 M1 策略回合、简战、BGM 与登基夜写回。"
+config/description="v0.2 M1 策略回合、简战、三条 BGM，以及 3D 登基夜写回。"
 config/version="0.2.0-m1"
 run/main_scene="res://scenes/big_map.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")

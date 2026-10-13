@@ -1,6 +1,6 @@
 # 《改命：天下》 / Altering the Destiny of the World
 
-v0.2 主工程在 [`godot/`](godot/README.md)（**Godot 4.6.3**，策略回合、简战、BGM 与 S1 登基夜）。`web/` 文字灰盒已归档，只留对照，不再作为产品形态。
+v0.2 主工程在 [`godot/`](godot/README.md)（**Godot 4.6.3**，策略回合、简战、三条 BGM，以及 3D 登基夜）。`web/` 文字灰盒已归档，只留对照，不再作为产品形态。
 
 ## v0.2 空壳大地图
 

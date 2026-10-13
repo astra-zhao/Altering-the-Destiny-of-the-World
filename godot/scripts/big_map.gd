@@ -363,6 +363,7 @@ func _open_battle(src_id: String, dst_id: String, preview: Dictionary) -> void:
 	_battle_src = src_id
 	_battle_dst = dst_id
 	_battle_done = false
+	Bgm.set_mode("battle")
 	_fill_battle(preview, false)
 	_battle.show()
 	var timer := get_tree().create_timer(1.4)
@@ -393,7 +394,7 @@ func _fill_battle(info: Dictionary, resolved: bool) -> void:
 	var hold := "守方本回合固守。\n" if bool(info["held"]) else ""
 	var terrain := "守方地形 ×%.2f。\n" % (float(info["terrain_pct"]) / 100.0)
 	var tail := "\n%s" % str(info["message"]) if resolved else "\n演出约 1 秒，可跳过。"
-	_battle_body.text = "%s 出兵 %d　→　%s 守军 %d\n%s%s%s攻方强度 %d　守方强度 %d%s" % [
+	_battle_body.text = "曲：战鼓\n%s 出兵 %d　→　%s 守军 %d\n%s%s%s攻方强度 %d　守方强度 %d%s" % [
 		info["src_name"],
 		int(info["sent"]),
 		info["dst_name"],
@@ -426,9 +427,15 @@ func _build_battle_overlay() -> void:
 	box.add_child(_battle_skip)
 	_battle_close = Button.new()
 	_battle_close.text = "返回大地图"
-	_battle_close.pressed.connect(func() -> void: _battle.hide())
+	_battle_close.pressed.connect(_close_battle)
 	box.add_child(_battle_close)
 	_battle.hide()
+
+
+func _close_battle() -> void:
+	_battle.hide()
+	if Bgm.mode == "battle":
+		Bgm.set_mode("map")
 
 
 func _build_settle_overlay() -> void:
