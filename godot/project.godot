@@ -1,13 +1,13 @@
 ; Engine configuration file.
-; 《改命：天下》v0.2 M0 — Godot 4.6.3. Edit in the editor when possible.
+; 《改命：天下》v0.2 M1 — Godot 4.6.3. Edit in the editor when possible.
 
 config_version=5
 
 [application]
 
 config/name="改命：天下"
-config/description="v0.2 M0 空壳策略大地图。六城可点，局面为大纲初值，不含回合模拟。"
-config/version="0.2.0-m0"
+config/description="v0.2 M1 策略回合、简战、BGM 与登基夜写回。"
+config/version="0.2.0-m1"
 run/main_scene="res://scenes/big_map.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
@@ -22,6 +22,15 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[autoload]
+
+Campaign="*res://scripts/campaign_state.gd"
+Bgm="*res://scripts/bgm.gd"
+
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
 
 [gui]
 
