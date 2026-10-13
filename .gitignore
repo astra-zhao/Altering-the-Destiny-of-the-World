@@ -9,3 +9,16 @@ Thumbs.db
 !.env.example
 *.local
 .cache/
+
+# Godot 4（工程在 godot/）
+.godot/
+.import/
+*.translation
+export.cfg
+export_credentials.cfg
+
+# Godot 导出包与缓存
+*.apk
+*.aab
+*.ipa
+*.pck

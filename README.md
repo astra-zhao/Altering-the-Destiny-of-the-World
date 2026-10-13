@@ -1,5 +1,13 @@
 # 《改命：天下》 / Altering the Destiny of the World
 
+v0.2 主工程在 [`godot/`](godot/README.md)（**Godot 4.6.3**，可点的空壳策略大地图）。`web/` 文字灰盒已归档，只留对照，不再作为产品形态。
+
+## v0.2 空壳大地图
+
+用 Godot **4.6.3** 打开 `godot/project.godot`，按 F5 运行。步骤见 [godot/README.md](godot/README.md)。
+
+## 归档：v0.1 文字灰盒
+
 崇祯线 M0 灰盒（N1–N7 + 结局）。Vite + TypeScript，可在本地直接游玩。
 
 Chongzhen-line M0 greybox (N1–N7 plus endings). Vite + TypeScript; playable locally.

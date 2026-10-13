@@ -1,0 +1,33 @@
+; Engine configuration file.
+; 《改命：天下》v0.2 M0 — Godot 4.6.3. Edit in the editor when possible.
+
+config_version=5
+
+[application]
+
+config/name="改命：天下"
+config/description="v0.2 M0 空壳策略大地图。六城可点，局面为大纲初值，不含回合模拟。"
+config/version="0.2.0-m0"
+run/main_scene="res://scenes/big_map.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/min_width=1100
+window/size/min_height=680
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://theme/main_theme.tres"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+environment/defaults/default_clear_color=Color(0.0784314, 0.0666667, 0.054902, 1)
