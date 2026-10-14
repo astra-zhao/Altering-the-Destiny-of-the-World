@@ -58,7 +58,7 @@ text = "改命：天下"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 8
-text = "v0.2 · M1 策略回合"
+text = "v0.2 · M2 剧情与结局"
 
 [node name="HeaderSpacer" type="Control" parent="RootMargin/Columns/MapColumn/Header"]
 layout_mode = 2
@@ -214,6 +214,15 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "否"
 
+[node name="LoyalistName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "勤王"
+
+[node name="LoyalistLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "否"
+
 [node name="FactionLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -311,6 +320,28 @@ text = "跳过"
 unique_name_in_owner = true
 layout_mode = 2
 text = "结束回合"
+
+[node name="SaveRow" type="HBoxContainer" parent="RootMargin/Columns/SideColumn/ActionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SaveButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/SaveRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "存档"
+
+[node name="LoadButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/SaveRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "读档"
+
+[node name="NewButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/SaveRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "新局"
 
 [node name="LogLabel" type="Label" parent="RootMargin/Columns/SideColumn/ActionPanel"]
 unique_name_in_owner = true

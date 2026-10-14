@@ -18,6 +18,7 @@ export.cfg
 export_credentials.cfg
 
 # Godot 导出包与缓存
+godot/build/
 *.apk
 *.aab
 *.ipa

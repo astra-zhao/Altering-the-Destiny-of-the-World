@@ -29,8 +29,13 @@ func _ready() -> void:
 	_position_markers.call_deferred()
 	_refresh()
 	Bgm.set_mode("map")
-	if Campaign.settled:
-		_show_settle()
+	if Campaign.pending_story != "":
+		_open_story(Campaign.pending_story)
+		return
+	if Campaign.settled and Campaign.ending_id != "" and not Campaign.skip_ending_scene:
+		_open_ending()
+		return
+	Campaign.skip_ending_scene = false
 
 
 func _install_font_fallback() -> void:
@@ -62,8 +67,10 @@ func _style_chrome() -> void:
 	%DetailBody.add_theme_color_override("font_color", Color(0.90, 0.86, 0.76))
 	%ActionHint.add_theme_font_size_override("font_size", 13)
 	%ActionHint.add_theme_color_override("font_color", Color(0.86, 0.80, 0.68))
+	%ActionHint.max_lines_visible = 2
 	%LogLabel.add_theme_font_size_override("font_size", 13)
 	%LogLabel.add_theme_color_override("font_color", Color(0.93, 0.86, 0.70))
+	%LogLabel.max_lines_visible = 2
 	%FactionLabel.add_theme_color_override("font_color", Color(0.82, 0.76, 0.64))
 	%HudFoot.add_theme_font_size_override("font_size", 12)
 	%HudFoot.add_theme_color_override("font_color", Color(0.62, 0.56, 0.46))
@@ -71,6 +78,7 @@ func _style_chrome() -> void:
 		var label := get_node("%%%s" % _stat_node(str(stat["id"]))) as Label
 		label.add_theme_color_override("font_color", Color(0.95, 0.86, 0.66))
 	%BefriendLabel.add_theme_color_override("font_color", Color(0.95, 0.86, 0.66))
+	%LoyalistLabel.add_theme_color_override("font_color", Color(0.95, 0.86, 0.66))
 
 
 func _stat_node(stat_id: String) -> String:
@@ -131,6 +139,9 @@ func _connect_actions() -> void:
 	%TrainButton.pressed.connect(_on_civil.bind("train"))
 	%SkipButton.pressed.connect(_on_civil.bind("skip"))
 	%EndTurnButton.pressed.connect(_on_end_turn)
+	%SaveButton.pressed.connect(_on_save)
+	%LoadButton.pressed.connect(_on_load)
+	%NewButton.pressed.connect(_on_new_game)
 	%MuteButton.pressed.connect(_on_mute)
 	%MarchButton.tooltip_text = "相邻明军城之间移兵，留 1 守军。耗粮 3，远邻耗粮 6。"
 	%AttackButton.tooltip_text = "攻打相邻敌城，留 1 守军，进入简战。"
@@ -189,6 +200,7 @@ func _fill_hud() -> void:
 	%WorldlineLabel.text = str(Campaign.worldline)
 	%YuanLabel.text = Campaign.yuan_status
 	%BefriendLabel.text = "是" if Campaign.befriended_yuan else "否"
+	%LoyalistLabel.text = "成功" if Campaign.loyalist_success else "否"
 	%LogLabel.text = Campaign.log_text
 	for stat in Baseline.STATS:
 		var label := get_node("%%%s" % _stat_node(str(stat["id"]))) as Label
@@ -333,12 +345,63 @@ func _on_end_turn() -> void:
 		%ActionHint.text = str(result["message"])
 		return
 	var where := str(result.get("goto", "map"))
-	if where == "s1":
-		Bgm.set_mode("story")
-		get_tree().change_scene_to_file("res://scenes/s1_night.tscn")
+	if where == "s1" or where == "s2" or where == "s3":
+		Campaign.save_game()
+		_open_story(where)
 		return
-	if where == "settle":
-		_show_settle()
+	if where == "ending":
+		_open_ending()
+
+
+func _on_save() -> void:
+	if Campaign.pending_story != "":
+		%ActionHint.text = "剧情进行中不能存档。进剧情前已自动存过。"
+		return
+	var result: Dictionary = Campaign.save_game()
+	%ActionHint.text = str(result["message"])
+	_refresh()
+
+
+func _on_load() -> void:
+	var result: Dictionary = Campaign.load_game()
+	%ActionHint.text = str(result["message"])
+	if not bool(result.get("ok", false)):
+		return
+	_selected_id = ""
+	_pick = ""
+	if Campaign.pending_story != "":
+		_open_story(Campaign.pending_story)
+		return
+	if Campaign.settled and Campaign.ending_id != "":
+		_open_ending()
+		return
+	_refresh()
+
+
+func _on_new_game() -> void:
+	Campaign.reset()
+	_selected_id = ""
+	_pick = ""
+	_battle.hide()
+	_settle.hide()
+	Bgm.set_mode("map")
+	_refresh()
+	%ActionHint.text = "新局已开。旧档还在，要读才会回来。"
+
+
+func _open_story(which: String) -> void:
+	var path := "res://scenes/s1_night.tscn"
+	if which == "s2":
+		path = "res://scenes/s2_yuan.tscn"
+	elif which == "s3":
+		path = "res://scenes/s3_crisis.tscn"
+	Bgm.set_mode("story")
+	get_tree().change_scene_to_file(path)
+
+
+func _open_ending() -> void:
+	Bgm.set_mode("ending")
+	get_tree().change_scene_to_file("res://scenes/ending.tscn")
 
 
 func _on_mute() -> void:

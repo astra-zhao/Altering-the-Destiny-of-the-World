@@ -1,13 +1,13 @@
 ; Engine configuration file.
-; 《改命：天下》v0.2 M1 — Godot 4.6.3. Edit in the editor when possible.
+; 《改命：天下》v0.2 M2 — Godot 4.6.3. Edit in the editor when possible.
 
 config_version=5
 
 [application]
 
 config/name="改命：天下"
-config/description="v0.2 M1 策略回合、简战、三条 BGM，以及 3D 登基夜写回。"
-config/version="0.2.0-m1"
+config/description="v0.2 M2：S2/S3、结局、存档，以及 macOS 导出。"
+config/version="0.2.0-m2"
 run/main_scene="res://scenes/big_map.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
@@ -39,4 +39,5 @@ theme/custom="res://theme/main_theme.tres"
 [rendering]
 
 renderer/rendering_method="forward_plus"
+textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.0784314, 0.0666667, 0.054902, 1)
