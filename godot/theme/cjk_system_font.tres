@@ -1,4 +1,0 @@
-[gd_resource type="SystemFont" format=3 uid="uid://b3m7q2x5n4k6t"]
-
-[resource]
-font_names = PackedStringArray("Droid Sans Fallback", "PingFang SC", "Hiragino Sans GB", "Heiti SC", "Songti SC", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC")

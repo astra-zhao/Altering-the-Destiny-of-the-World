@@ -14,7 +14,7 @@
 
 第一次会生成 `godot/.godot/`，已写入仓库 `.gitignore`。
 
-界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，910 字子集，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
+界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，959 字子集，含全部可打印 ASCII U+0020–U+007E 和半角 `=`，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。Godot 只引用三份 `.otf`（`scripts/ui_kit.gd` 和主题）。同名 `.woff2` 留在仓库里给 H5，`web/` 仍用系统字体族名，没有引用这些文件。macOS 导出预设排除 `*.woff2`，包里只有 otf。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
 
 ## 怎么玩
 
@@ -65,7 +65,7 @@ godot --headless --path . -s res://scripts/bgm_check.gd
 - 文字都是字体节点。标题用 Noto Serif Bold，正文用 Noto Sans。城名、兵力、「下一回合」、卡片文案都不烤在图里。胜负平三枚 `stamp_*` 本身带字，这是唯一例外。
 - 九宫格边距按切图清单：小面板 10、中面板 20、大面板 26、帮我选 20、内政卡 20、筹码 10、推荐行 6、名牌 8、数据砖 6、进度条左右 6 上下 0。
 - 按钮、内政卡、城印用切图的 normal / hover / pressed / disabled / selected。城印切图只有 normal / hover / selected，按下时用 selected。城池始终可点，没有 disabled 图。灰态旁边或卡内有一句原因。
-- 邻接是实线。大同—宁远是 `campaign_baseline` 里的远邻，画虚线并标「运粮」。
+- 邻接是实线。大同—宁远是 `campaign_baseline` 里的远邻，画虚线并标「远邻」。
 - 简战交战中有进度条和「跳过演出」。胜、负、平只有「返回大地图」。攻方大数字是守军兵力（出兵 + 1），旁边写「出兵 N」。有效兵力用游戏规则，不是设计稿上的「兵力 × 系数」。开局宁远 18 打锦州 10、有袁部：出兵 17，攻方有效 21.25，守方有效 10.0，结果是胜并占城。设计稿上的 22.5 是示意，不要拿来对数字。
 - 结局卷轴有世界线（按 40 封顶的比例画朱砂条）、改写记、2×3 数据砖。页脚只写真实署名：`配乐：Floating Lanterns · John Bartmann · CC0`。
 - 无头自检仍是上面三条，不看画面。出图脚本 `scenes/qa_ui_capture.tscn` 只给对照截图，不进正式游玩。
@@ -208,6 +208,6 @@ cd godot
 | `scripts/advisor_smoke.gd` | 只点第一条推荐，直到结局甲 |
 | `scripts/big_map.gd` | 大地图、引导、内政卡、简战浮层 |
 | `scripts/campaign_state.gd` | 回合、简战、S1–S3 写回、结局、存档 |
-| `assets/ui/NotoSansSC-Regular.otf` 等 | 界面字体 910 字子集，SIL OFL 1.1，许可见 `assets/ui/OFL.txt` |
+| `assets/ui/NotoSansSC-Regular.otf` 等 | 界面字体 959 字子集（含 ASCII 与 `=`）。Godot 用 otf；woff2 不进 macOS 包。SIL OFL 1.1，许可见 `assets/ui/OFL.txt` |
 | `export_presets.cfg` | macOS universal 导出预设 |
 | `data/campaign_baseline.gd` | 六城、邻接、初值、消耗 |

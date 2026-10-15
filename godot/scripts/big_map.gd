@@ -420,8 +420,9 @@ func _build_end() -> void:
 	_end_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_end_reason.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	_end_reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_end_reason.custom_minimum_size = Vector2(188, 44)
-	_end_reason.clip_text = true
+	_end_reason.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_end_reason.custom_minimum_size = Vector2(260, 28)
+	_end_reason.clip_text = false
 	_end_reason.z_index = 6
 	UiKit.outline(_end_reason, 4)
 	add_child(_end_reason)
@@ -567,9 +568,13 @@ func _layout_chrome() -> void:
 		seal = 144.0
 	_end_button.position = Vector2(size.x - seal - 16.0, size.y - 8.0 - seal)
 	_end_button.size = Vector2(seal, seal)
-	_end_reason.custom_minimum_size = Vector2(maxf(seal, 168.0), 22.0)
-	_end_reason.position = Vector2(_end_button.position.x, _end_button.position.y - 26.0)
-	_end_reason.size = _end_reason.custom_minimum_size
+	var reason_w := 260.0
+	var reason_h := 28.0
+	_end_reason.custom_minimum_size = Vector2(reason_w, reason_h)
+	var reason_right := _end_button.position.x + seal
+	# 一句能排进 260 宽。贴着印章上沿，避免矮窗口里压到练兵卡。
+	_end_reason.position = Vector2(reason_right - reason_w, _end_button.position.y - reason_h - 4.0)
+	_end_reason.size = Vector2(reason_w, reason_h)
 	_fit_side()
 	_layout_advisor()
 	_position_markers()
@@ -584,9 +589,21 @@ func _layout_advisor() -> void:
 		_help_button.position = Vector2(16, size.y - 70)
 		return
 	_help_button.visible = false
-	var height := 214.0
 	var width := 470.0
-	_advisor_panel.position = Vector2(12, size.y - 8 - height)
+	var list_h := 0.0
+	if _advisor_list != null:
+		var count := _advisor_list.get_child_count()
+		var sep := float(_advisor_list.get_theme_constant("separation"))
+		for child in _advisor_list.get_children():
+			var row := child as Control
+			if row != null:
+				list_h += maxf(row.custom_minimum_size.y, row.get_combined_minimum_size().y)
+		if count > 1:
+			list_h += sep * float(count - 1)
+	# 头 44、间距 4、上下边距 14+12。行文超出 42 时整板往上长，仍贴底。
+	var height := maxf(214.0, 14.0 + 44.0 + 4.0 + list_h + 12.0)
+	_advisor_panel.custom_minimum_size = Vector2(width, height)
+	_advisor_panel.position = Vector2(12, size.y - 8.0 - height)
 	_advisor_panel.size = Vector2(width, height)
 
 
@@ -805,6 +822,9 @@ func _refresh_guide() -> void:
 	if _guide_target != null and is_instance_valid(_guide_target) and _guide_target.is_visible_in_tree():
 		rect = _guide_target.get_global_rect()
 	var panel_w := _guide_width()
+	if Campaign.guide_step >= 2 and _end_button != null:
+		var room := _end_button.position.x - 18.0
+		panel_w = minf(328.0, maxf(200.0, room))
 	var text_w := maxf(148.0, panel_w - 28.0)
 	_guide_text.custom_minimum_size = Vector2(text_w, 0)
 	var text_h := 44.0
@@ -884,6 +904,10 @@ func _fit_side() -> void:
 
 func _place_guide(panel: Vector2, target: Rect2) -> Vector2:
 	var candidates: Array[Vector2] = []
+	if Campaign.guide_step >= 2 and _end_button != null:
+		var btn := _end_button.get_global_rect()
+		candidates.append(Vector2(btn.position.x - panel.x - 10.0, btn.position.y + 12.0))
+		candidates.append(Vector2(btn.position.x - panel.x - 10.0, btn.position.y - panel.y - 8.0))
 	var adv := Rect2()
 	var adv_on := _advisor_panel != null and _advisor_panel.visible
 	if adv_on:
@@ -939,6 +963,11 @@ func _place_guide(panel: Vector2, target: Rect2) -> Vector2:
 
 
 func _guide_home() -> Rect2:
+	if Campaign.guide_step >= 2 and _end_button != null:
+		var btn := _end_button.get_global_rect()
+		var panel_w := minf(328.0, maxf(200.0, btn.position.x - 24.0))
+		var panel_h := 120.0
+		return Rect2(btn.position.x - panel_w - 10.0, btn.position.y + 12.0, panel_w, panel_h)
 	var panel_w := _guide_width()
 	var left := 16.0
 	if _advisor_panel != null and _advisor_panel.visible:
@@ -1226,7 +1255,7 @@ func _fill_advisor() -> void:
 func _advisor_row(index: int, action: Dictionary) -> Control:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
-	button.clip_contents = true
+	button.clip_contents = false
 	button.custom_minimum_size = Vector2(446, 42)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1266,16 +1295,31 @@ func _advisor_row(index: int, action: Dictionary) -> Control:
 	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	num.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bubble.add_child(num)
-	var title := UiKit.label(str(action.get("title", "")), UiKit.serif, 16, UiKit.CREAM)
-	title.custom_minimum_size = Vector2(0, 28)
+	var title_text := str(action.get("title", ""))
+	var title := UiKit.label(title_text, UiKit.serif, 16, UiKit.CREAM)
+	var title_w := 72.0
+	if UiKit.serif != null:
+		title_w = UiKit.serif.get_string_size(title_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
+	var reason_w := 446.0 - 16.0 - 26.0 - 8.0 - title_w - 8.0
+	if reason_w < 160.0:
+		reason_w = 160.0
+		title_w = maxf(48.0, 446.0 - 16.0 - 26.0 - 8.0 - reason_w - 8.0)
+	title.custom_minimum_size = Vector2(title_w, 28)
 	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
 	var reason := UiKit.label(reason_text, UiKit.sans, 13, Color(0.86, 0.8, 0.7))
-	reason.clip_text = true
-	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	reason.custom_minimum_size = Vector2(40, 28)
+	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reason.clip_text = false
+	reason.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	reason.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var text_h := 28.0
+	if UiKit.sans != null:
+		text_h = UiKit.sans.get_multiline_string_size(reason_text, HORIZONTAL_ALIGNMENT_LEFT, reason_w, 13).y
+	reason.custom_minimum_size = Vector2(reason_w, text_h)
 	reason.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reason.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(reason)
+	button.custom_minimum_size = Vector2(446, maxf(42.0, text_h + 10.0))
 	return button
 
 

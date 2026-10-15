@@ -31,7 +31,7 @@ func _draw() -> void:
 			continue
 		if bool(route["far"]):
 			draw_dashed_line(a, b, faded, 2.0, 9.0, true, true)
-			_draw_route_label(a, b, "运粮")
+			_draw_route_label(a, b, "远邻")
 		else:
 			draw_line(a, b, solid, 2.4, true)
 	var sea: Vector2 = size * Vector2(0.80, 0.84)

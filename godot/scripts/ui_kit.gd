@@ -178,4 +178,5 @@ static func _load_font(file_name: String) -> Font:
 	if font == null:
 		return null
 	font.allow_system_fallback = false
+	font.fallbacks.clear()
 	return font

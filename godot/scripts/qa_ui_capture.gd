@@ -66,6 +66,7 @@ func _shots() -> void:
 	await _wait(0.45)
 	_note_glyphs()
 	_dump_layout("ui01-before", map)
+	_dump_text_fit(map)
 	await _shot("13-ui01-before")
 	await _shot("09-next-turn-disabled")
 	await _shot("03-civil-disabled")
@@ -85,8 +86,10 @@ func _shots() -> void:
 	_pick_hold(map)
 	await _wait(0.35)
 	_dump_layout("ui01-after", map)
+	_dump_text_fit(map)
 	_note_glyphs()
 	await _shot("14-ui01-after")
+	await _shot("16-step3-guide")
 	Campaign.reset()
 	map = await _open_map()
 	await _wait(0.35)
@@ -141,6 +144,7 @@ func _shots() -> void:
 	_note_glyphs()
 	await _shot("08-ending")
 	_measure_contrast()
+	await _shot_s2()
 	_print_missing()
 	print("UI_CAPTURE_OK")
 	get_tree().quit(0)
@@ -216,6 +220,67 @@ func _dump_layout(tag: String, map: Node) -> void:
 			print("OVERLAP_GUIDE %s %s %s" % [tag, city_id, token_rect])
 
 
+func _dump_text_fit(map: Node) -> void:
+	_print_label_fit("END_REASON", map._end_reason)
+	var list: Node = map._advisor_list
+	if list == null:
+		return
+	var index := 0
+	for child in list.get_children():
+		var reason := _last_label(child)
+		if reason != null:
+			_print_label_fit("ADVISOR_REASON_%d" % index, reason)
+		index += 1
+	print("ADVISOR_PANEL %s" % map._advisor_panel.size)
+
+
+func _print_label_fit(tag: String, label: Label) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var width := maxf(label.size.x, label.custom_minimum_size.x)
+	var height := maxf(label.size.y, label.custom_minimum_size.y)
+	var need := Vector2.ZERO
+	if font != null and width > 1.0:
+		need = font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, width, font_size)
+	var fits := need.x <= width + 1.0 and need.y <= height + 1.0
+	print("%s text=%s ctrl=%s need=%s fits=%s" % [tag, label.text, Vector2(width, height), need, fits])
+
+
+func _last_label(node: Node) -> Label:
+	var found: Label = null
+	if node is Label:
+		found = node as Label
+	for child in node.get_children():
+		var nested := _last_label(child)
+		if nested != null:
+			found = nested
+	return found
+
+
+func _shot_s2() -> void:
+	get_tree().change_scene_to_file("res://scenes/s2_yuan.tscn")
+	for _i in 50:
+		await get_tree().process_frame
+		var scene := get_tree().current_scene
+		if scene == null or not str(scene.scene_file_path).ends_with("s2_yuan.tscn"):
+			continue
+		_apply_size()
+		await get_tree().process_frame
+		var choices := scene.get("_choices") as Control
+		if choices == null:
+			continue
+		choices.visible = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+		for child in choices.get_children():
+			if child is Button:
+				print("S2_OPTION %s" % str((child as Button).text).replace("\n", " | "))
+		_note_glyphs()
+		await _shot("17-s2-equals")
+		return
+	push_error("S2 没有起来")
+
+
 func _dump_card(map: Node) -> void:
 	var reason: Label = map._cards["train"]["reason"]
 	var end_reason: Control = map._end_reason
@@ -250,18 +315,24 @@ func _note_glyphs() -> void:
 func _walk_glyphs(node: Node) -> void:
 	if node is CanvasItem and not (node as CanvasItem).visible:
 		return
+	var text := ""
+	var font: Font = null
 	if node is Label:
 		var label := node as Label
-		var font: Font = label.get_theme_font("font")
-		var text := label.text
-		var i := 0
-		while i < text.length():
-			var code := text.unicode_at(i)
-			i += 1
-			if code <= 32:
-				continue
-			if font == null or not font.has_char(code):
-				_missing[char(code)] = true
+		text = label.text
+		font = label.get_theme_font("font")
+	elif node is Button:
+		var button := node as Button
+		text = button.text
+		font = button.get_theme_font("font")
+	var i := 0
+	while i < text.length():
+		var code := text.unicode_at(i)
+		i += 1
+		if code <= 32:
+			continue
+		if font == null or not font.has_char(code):
+			_missing[char(code)] = true
 	for child in node.get_children():
 		_walk_glyphs(child)
 
