@@ -12,7 +12,7 @@
 2. 解压后把 `Godot.app` 放进「应用程序」。若系统提示无法验证开发者：在 Finder 里对 Godot **右键 → 打开**，或到「系统设置 → 隐私与安全性」里允许。
 3. 启动 Godot，选 **Import**，指向本目录的 `project.godot`。
 4. 项目设置里 `config/features` 含 `4.6` 与 `Forward Plus`，应用名是「改命：天下」，主场景是 `scenes/big_map.tscn`。
-5. 按 **F5** 运行。右上角应能听到低音地图循环。简战是鼓点，剧情是高音，结算是更慢的收束。按「静音」后四条都没有声音，再按「取消静音」恢复。
+5. 按 **F5** 运行。右上角应能听到低音地图循环。简战是鼓点，剧情是高音，结算是更慢的收束。标题栏「音量」是主音量，默认约 80%（播放器再低 4 dB），听得清但不顶满；拉到最左接近无声。按「静音」后四条都没有声音，再按「取消静音」按当前音量恢复。进简战、S1–S3 和结算时曲目会换，播放器不停。
 
 首次打开会在本地生成 `godot/.godot/`，已写入仓库 `.gitignore`。
 
@@ -111,12 +111,33 @@ cd godot
 
 脚本会把包打到 `godot/build/macos/改命天下.app`（已 gitignore）。官方 4.6.3 模板里的 macOS 二进制是 universal，预设因此选 universal，而不是单独的 arm64 文件名。导出前工程已打开 **Import ETC2 ASTC**，否则 arm64/universal 会拒导。
 
+## BGM 无头自检
+
+地图、简战、剧情 S1、S2、S3、结算各查一次当前曲目的播放器，必须同时满足：
+
+- `playing` 为真（四条播放器都保持在播，只是音量交叉淡化，切场景不会停）
+- 当前曲目 `volume_db > -60`
+- `AudioStreamWAV.data` 非空，并且里面有非零采样
+- 播放类型是 **Stream**。强制 Sample 时，macOS CoreAudio 和 Dummy 都只会打出 `driver doesn't support sample playback`，声音被丢掉，但 `playing` 仍可能是真
+- 向前循环（`loop_end` 大于 `loop_begin`）
+- 默认未静音，主音量高于 -60 dB；静音开关能关掉 BGM 总线再打开，且不把播放器停掉
+
+```bash
+cd godot
+godot --headless --path . -s res://scripts/bgm_check.gd
+```
+
+用 **Godot 4.6.3**。成功时标准输出有一行 `BGM_CHECK_OK`，进程退出码是 0。失败会打印 `BGM_CHECK_FAIL` 并以非 0 退出。
+
+无头用的是 Dummy 驱动，听不见声音；这项检查的是播放器状态。编辑器 F5 和导出的 macOS `.app` 走 CoreAudio 混音，Stream 才会从喇叭出来。简战没有单独场景，自检停在大地图上切到 `battle`，和简战浮层是同一条 `Bgm.set_mode("battle")`。
+
 ## 目录
 
 | 路径 | 作用 |
 | --- | --- |
 | `project.godot` | 工程入口，钉死 4.6 / Forward Plus |
-| `scripts/bgm.gd` | 地图 / 简战 / 剧情 / 结局，静音走 BGM 总线 |
+| `scripts/bgm.gd` | 地图 / 简战 / 剧情 / 结局。Stream 循环，静音走 BGM 总线，主音量走 Master |
+| `scripts/bgm_check.gd` | `godot --headless -s` 自检四条曲目在播 |
 | `scripts/big_map.gd` | 大地图、存读档 |
 | `scripts/campaign_state.gd` | 回合、简战、S1–S3 写回、结局、存档 |
 | `scripts/s2_yuan.gd` | 袁崇焕生死 |
