@@ -1,9 +1,9 @@
 extends Node
-## 四条循环：地图、简战、剧情、结局。程序生成 WAV，静音关 BGM 总线，主音量走 Master。
+## 四条循环：地图、简战、剧情、结局。默认读 audio/tracks 里的 OGG，缺文件才退回程序音。静音关 BGM 总线，主音量走 Master。
 
 var muted := false
 var mode := "map"
-## 0..1，1 是 0 dB。默认不满格，听得清，纯音不顶满。
+## 0..1，1 是 0 dB。默认不满格，听得清，纯音不顶满。滑条和静音会记在本机。
 var master_linear := 0.8
 
 var _players: Dictionary = {}
@@ -15,15 +15,25 @@ const _ACTIVE_DB := -4.0
 const _IDLE_DB := -80.0
 const _RATE := 22050
 const _FADE_SEC := 0.6
+const _PREFS_PATH := "user://audio_prefs.json"
+## 换曲只替换这四个文件，文件名不要改。
+const TRACK_FILES := {
+	"map": "res://audio/tracks/map.ogg",
+	"battle": "res://audio/tracks/battle.ogg",
+	"story": "res://audio/tracks/story.ogg",
+	"ending": "res://audio/tracks/ending.ogg",
+}
 
 
 func _ready() -> void:
 	_ensure_bus()
+	_load_prefs()
 	set_master_linear(master_linear)
-	_players["map"] = _make_player("map", _wav("map"), _ACTIVE_DB)
-	_players["battle"] = _make_player("battle", _wav("battle"), _IDLE_DB)
-	_players["story"] = _make_player("story", _wav("story"), _IDLE_DB)
-	_players["ending"] = _make_player("ending", _wav("ending"), _IDLE_DB)
+	set_muted(muted)
+	_players["map"] = _make_player("map", _load_stream("map"), _ACTIVE_DB)
+	_players["battle"] = _make_player("battle", _load_stream("battle"), _IDLE_DB)
+	_players["story"] = _make_player("story", _load_stream("story"), _IDLE_DB)
+	_players["ending"] = _make_player("ending", _load_stream("ending"), _IDLE_DB)
 	for key in _players:
 		(_players[key] as AudioStreamPlayer).play()
 
@@ -56,6 +66,7 @@ func set_master_linear(value: float) -> void:
 		return
 	var db := -80.0 if master_linear <= 0.001 else linear_to_db(master_linear)
 	AudioServer.set_bus_volume_db(idx, db)
+	_save_prefs()
 
 
 func set_muted(value: bool) -> void:
@@ -63,6 +74,7 @@ func set_muted(value: bool) -> void:
 	var idx := AudioServer.get_bus_index("BGM")
 	if idx >= 0:
 		AudioServer.set_bus_mute(idx, muted)
+	_save_prefs()
 
 
 func toggle_muted() -> bool:
@@ -128,7 +140,43 @@ func _ensure_bus() -> void:
 	AudioServer.set_bus_send(idx, "Master")
 
 
-func _make_player(kind: String, stream: AudioStreamWAV, volume_db: float) -> AudioStreamPlayer:
+func _load_prefs() -> void:
+	if not FileAccess.file_exists(_PREFS_PATH):
+		return
+	var file := FileAccess.open(_PREFS_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var linear: Variant = parsed.get("linear", null)
+	if typeof(linear) == TYPE_FLOAT or typeof(linear) == TYPE_INT:
+		master_linear = clampf(float(linear), 0.0, 1.0)
+	if typeof(parsed.get("muted", null)) == TYPE_BOOL:
+		muted = bool(parsed["muted"])
+
+
+func _save_prefs() -> void:
+	var file := FileAccess.open(_PREFS_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({"linear": master_linear, "muted": muted}))
+
+
+func _load_stream(kind: String) -> AudioStream:
+	var path := str(TRACK_FILES.get(kind, ""))
+	if path != "" and ResourceLoader.exists(path):
+		var loaded: Variant = load(path)
+		if loaded is AudioStreamOggVorbis:
+			var stream := (loaded as AudioStreamOggVorbis).duplicate(true) as AudioStreamOggVorbis
+			stream.loop = true
+			stream.loop_offset = 0.0
+			return stream
+	push_warning("缺少可替换曲目 %s，暂用程序音。" % path)
+	return _wav(kind)
+
+
+func _make_player(kind: String, stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
 	player.name = "Track_%s" % kind
 	player.stream = stream

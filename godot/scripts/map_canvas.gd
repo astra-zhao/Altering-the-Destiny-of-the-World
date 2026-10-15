@@ -1,12 +1,14 @@
 extends Control
-## 示意地图：羊皮纸底、渤海色块、城池邻接线。城钮由 big_map.gd 叠在同一坐标系上。
+## 程序绘制的示意地图：纸色、远山、海岸、邻接线。没有外部贴图。
+## 城的位置仍是 campaign_baseline 里的示意坐标。
 
 const Baseline := preload("res://data/campaign_baseline.gd")
 
-const _INK := Color(0.32, 0.23, 0.15, 0.88)
-const _INK_SOFT := Color(0.36, 0.26, 0.17, 0.55)
-const _PAPER := Color(0.851, 0.78, 0.651, 1)
-const _WATER := Color(0.42, 0.55, 0.58, 0.42)
+const _INK := Color(0.28, 0.18, 0.12, 0.9)
+const _INK_SOFT := Color(0.36, 0.24, 0.16, 0.45)
+const _PAPER := Color(0.84, 0.75, 0.6, 1)
+const _WATER := Color(0.38, 0.5, 0.54, 0.55)
+const _MOUNT := Color(0.42, 0.36, 0.3, 0.28)
 
 
 func _ready() -> void:
@@ -19,21 +21,44 @@ func _draw() -> void:
 	if sz.x < 32.0 or sz.y < 32.0:
 		return
 	draw_rect(Rect2(Vector2.ZERO, sz), _PAPER, true)
+	_draw_wash(sz)
+	_draw_mountains(sz)
 	_draw_water(sz)
-	draw_rect(Rect2(Vector2(10, 10), sz - Vector2(20, 20)), Color(0.45, 0.34, 0.22, 0.28), false, 1.5)
+	draw_rect(Rect2(Vector2(8, 8), sz - Vector2(16, 16)), Color(0.35, 0.22, 0.12, 0.55), false, 2.0)
 	_draw_routes(sz)
 	_draw_captions(sz)
 
 
+func _draw_wash(sz: Vector2) -> void:
+	draw_rect(Rect2(Vector2(0, sz.y * 0.62), Vector2(sz.x * 0.46, sz.y * 0.38)), Color(0.78, 0.68, 0.5, 0.35), true)
+	draw_circle(Vector2(sz.x * 0.22, sz.y * 0.3), sz.y * 0.22, Color(0.9, 0.82, 0.66, 0.35))
+	draw_rect(Rect2(Vector2(sz.x * 0.58, 0), Vector2(sz.x * 0.2, sz.y * 0.5)), Color(0.72, 0.6, 0.44, 0.18), true)
+
+
+func _draw_mountains(sz: Vector2) -> void:
+	var ridges := [
+		[Vector2(0.04, 0.42), Vector2(0.12, 0.22), Vector2(0.2, 0.4), Vector2(0.28, 0.18), Vector2(0.36, 0.38)],
+		[Vector2(0.62, 0.22), Vector2(0.7, 0.08), Vector2(0.78, 0.2), Vector2(0.86, 0.06), Vector2(0.96, 0.18)],
+	]
+	for ridge in ridges:
+		var poly := PackedVector2Array()
+		for point in ridge:
+			poly.append(Vector2(point) * sz)
+		poly.append(Vector2(ridge[-1].x, ridge[0].y + 0.08) * sz)
+		poly.append(Vector2(ridge[0].x, ridge[0].y + 0.08) * sz)
+		draw_colored_polygon(poly, _MOUNT)
+
+
 func _draw_water(sz: Vector2) -> void:
 	var water := PackedVector2Array([
-		Vector2(0.50 * sz.x, sz.y),
+		Vector2(0.48 * sz.x, sz.y),
 		Vector2(sz.x, sz.y),
-		Vector2(sz.x, 0.58 * sz.y),
-		Vector2(0.78 * sz.x, 0.66 * sz.y),
-		Vector2(0.58 * sz.x, 0.82 * sz.y),
+		Vector2(sz.x, 0.55 * sz.y),
+		Vector2(0.8 * sz.x, 0.62 * sz.y),
+		Vector2(0.62 * sz.x, 0.78 * sz.y),
 	])
 	draw_colored_polygon(water, _WATER)
+	draw_polyline(water, Color(0.22, 0.32, 0.36, 0.35), 1.5, true)
 
 
 func _draw_routes(sz: Vector2) -> void:
@@ -44,19 +69,16 @@ func _draw_routes(sz: Vector2) -> void:
 			continue
 		if bool(route["far"]):
 			draw_dashed_line(a, b, _INK_SOFT, 1.6, 8.0, true, true)
-			_draw_caption((a + b) * 0.5 + Vector2(8, -8), "远", 13, _INK)
 		else:
-			draw_line(a, b, _INK, 2.0, true)
-		draw_circle(a, 4.0, _INK)
-		draw_circle(b, 4.0, _INK)
+			draw_line(a, b, _INK, 2.2, true)
 
 
 func _draw_captions(sz: Vector2) -> void:
-	_draw_caption(Vector2(0.08, 0.10) * sz, "西", 14, _INK_SOFT)
-	_draw_caption(Vector2(0.78, 0.08) * sz, "东北", 14, _INK_SOFT)
-	_draw_caption(Vector2(0.20, 0.62) * sz, "畿辅", 15, _INK_SOFT)
-	_draw_caption(Vector2(0.60, 0.48) * sz, "辽东", 15, _INK_SOFT)
-	_draw_caption(Vector2(0.72, 0.86) * sz, "渤海（示意）", 13, Color(0.22, 0.32, 0.36, 0.7))
+	_draw_caption(Vector2(0.06, 0.08) * sz, "西", 15, _INK_SOFT)
+	_draw_caption(Vector2(0.8, 0.08) * sz, "东北", 15, _INK_SOFT)
+	_draw_caption(Vector2(0.18, 0.58) * sz, "畿辅", 16, _INK_SOFT)
+	_draw_caption(Vector2(0.58, 0.46) * sz, "辽东", 16, _INK_SOFT)
+	_draw_caption(Vector2(0.7, 0.88) * sz, "海（示意）", 13, Color(0.18, 0.28, 0.32, 0.75))
 
 
 func _draw_caption(at: Vector2, text: String, font_size: int, color: Color) -> void:

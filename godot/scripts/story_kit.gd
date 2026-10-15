@@ -42,6 +42,37 @@ static func _mesh(parent: Node3D, node_name: String, mesh: Mesh, pos: Vector3, a
 	return inst
 
 
+static func night_environment(background: Color, fog_color: Color) -> Environment:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = background
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.16, 0.12, 0.11)
+	env.ambient_light_energy = 0.62
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.glow_enabled = true
+	env.glow_intensity = 0.55
+	env.glow_strength = 0.8
+	env.glow_bloom = 0.14
+	env.glow_hdr_threshold = 0.85
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+	env.fog_density = 0.02
+	env.fog_light_color = fog_color
+	return env
+
+
+static func moon(parent: Node3D, energy: float, rotation: Vector3, color: Color) -> DirectionalLight3D:
+	var light := DirectionalLight3D.new()
+	light.light_color = color
+	light.light_energy = energy
+	light.rotation_degrees = rotation
+	light.shadow_enabled = true
+	light.directional_shadow_max_distance = 40.0
+	parent.add_child(light)
+	return light
+
+
 static func install_font(control: Control) -> void:
 	var font := control.get_theme_font("font")
 	var fallback := load("res://theme/cjk_system_font.tres") as Font

@@ -1,10 +1,10 @@
 # 《改命：天下》 / Altering the Destiny of the World
 
-v0.2 主工程在 [`godot/`](godot/README.md)（**Godot 4.6.3**，策略回合、简战、S1–S3、结局与存档）。`web/` 文字灰盒已归档，只留对照，不再作为产品形态。
+v0.3 主工程在 [`godot/`](godot/README.md)（**Godot 4.6.3**）。在原来的策略回合、简战、S1–S3、结局和存档上，加了三步引导、「下一步该做什么」、点城即走、「帮我选」，以及四条可替换的 CC0 曲目。`web/` 文字灰盒已归档，只留对照，不再作为产品形态。
 
-## v0.2 空壳大地图
+## 怎么打开
 
-用 Godot **4.6.3** 打开 `godot/project.godot`，按 F5 运行。M1 怎么试见 [godot/README.md](godot/README.md)。
+用 Godot **4.6.3** 打开 `godot/project.godot`，按 F5。怎么玩、验收命令、曲目授权和循环检查见 [godot/README.md](godot/README.md)。
 
 ## 归档：v0.1 文字灰盒
 

@@ -1,13 +1,13 @@
 ; Engine configuration file.
-; 《改命：天下》v0.2 M2 — Godot 4.6.3. Edit in the editor when possible.
+; 《改命：天下》v0.3 — Godot 4.6.3. Edit in the editor when possible.
 
 config_version=5
 
 [application]
 
 config/name="改命：天下"
-config/description="v0.2 M2：S2/S3、结局、存档，以及 macOS 导出。"
-config/version="0.2.0-m2"
+config/description="v0.3：新手引导、帮我选、四轨可替换 BGM。"
+config/version="0.3.0"
 run/main_scene="res://scenes/big_map.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
@@ -27,6 +27,7 @@ window/stretch/aspect="expand"
 
 Campaign="*res://scripts/campaign_state.gd"
 Bgm="*res://scripts/bgm.gd"
+Fade="*res://scripts/screen_fade.gd"
 
 [audio]
 

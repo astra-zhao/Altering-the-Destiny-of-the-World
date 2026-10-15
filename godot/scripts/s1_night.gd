@@ -16,7 +16,10 @@ const _FOV_END := 46.0
 func _ready() -> void:
 	_install_font_fallback()
 	_orient_lights()
+	_polish_light()
 	Bgm.set_mode("story")
+	if has_node("/root/Fade"):
+		get_node("/root/Fade").fade_in()
 	_choices.visible = false
 	_sub.text = "宫城夜景 · 镜头推近"
 	_camera.position = _CAM_START
@@ -30,6 +33,27 @@ func _ready() -> void:
 func _orient_lights() -> void:
 	$MoonLight.rotation_degrees = Vector3(-58, 32, 0)
 	$FillLight.rotation_degrees = Vector3(-18, 168, 0)
+
+
+func _polish_light() -> void:
+	var env := $WorldEnvironment.environment as Environment
+	if env != null:
+		env.glow_enabled = true
+		env.glow_intensity = 0.6
+		env.glow_strength = 0.85
+		env.glow_bloom = 0.16
+		env.glow_hdr_threshold = 0.8
+		env.fog_enabled = true
+		env.fog_light_color = Color(0.16, 0.12, 0.18)
+		env.fog_density = 0.014
+		env.tonemap_mode = Environment.TONE_MAPPER_ACES
+		env.ambient_light_energy = 0.55
+	var rim := DirectionalLight3D.new()
+	rim.name = "RimLight"
+	rim.light_color = Color(0.95, 0.72, 0.42)
+	rim.light_energy = 0.38
+	rim.rotation_degrees = Vector3(-24, -150, 0)
+	add_child(rim)
 
 
 func _on_push(weight: float) -> void:

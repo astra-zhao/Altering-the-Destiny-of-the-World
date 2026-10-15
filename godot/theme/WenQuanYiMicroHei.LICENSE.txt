@@ -1,4 +1,4 @@
-WenQuanYi Micro Hei subset (WenQuanYiMicroHei-Subset.ttf)
+WenQuanYi Micro Hei (WenQuanYiMicroHei.ttf, and the older subset WenQuanYiMicroHei-Subset.ttf)
 Copyright 2008-2009 The WenQuanYi Project Board of Trustees
 Copyright 2008-2009 Qianqian Fang
 Based on the Droid font family:
