@@ -7,7 +7,7 @@ config_version=5
 
 config/name="改命：天下"
 config/description="v0.4：v1.2 手绘界面。机制仍是 v0.3 的引导、帮我选和四轨 BGM。"
-config/version="0.4.0"
+config/version="0.3.0"
 run/main_scene="res://scenes/big_map.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
