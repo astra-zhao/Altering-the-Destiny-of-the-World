@@ -143,24 +143,33 @@ static func link_button(text: String) -> Button:
 static func seal_button(prefix: String) -> TextureButton:
 	var button := TextureButton.new()
 	button.focus_mode = Control.FOCUS_NONE
-	button.texture_normal = tex("%s_normal.png" % prefix)
-	button.texture_hover = tex("%s_hover.png" % prefix)
-	button.texture_pressed = tex("%s_pressed.png" % prefix)
-	button.texture_disabled = tex("%s_disabled.png" % prefix)
-	button.texture_focused = tex("%s_selected.png" % prefix)
-	button.ignore_texture_size = false
-	button.stretch_mode = TextureButton.STRETCH_KEEP_CENTERED
+	button.ignore_texture_size = true
+	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	paint_seal(button, prefix, false, false)
 	return button
 
 
-static func paint_seal(button: TextureButton, prefix: String, picked: bool) -> void:
-	var hot := picked and not button.disabled
-	button.texture_normal = tex("%s_%s.png" % [prefix, "selected" if hot else "normal"])
-	button.texture_hover = tex("%s_%s.png" % [prefix, "selected" if hot else "hover"])
-	button.texture_pressed = tex("%s_%s.png" % [prefix, "selected" if hot else "pressed"])
+static func paint_seal(button: TextureButton, prefix: String, picked: bool, hovering: bool = false) -> void:
+	button.modulate = Color.WHITE
+	button.self_modulate = Color.WHITE
+	var face := "normal"
+	if button.disabled:
+		face = "disabled"
+	elif picked:
+		face = "selected"
+	elif hovering:
+		face = "hover"
+	var hover_face := "selected" if picked else "hover"
+	var pressed_face := "selected" if picked else "pressed"
+	if button.disabled:
+		hover_face = "disabled"
+		pressed_face = "disabled"
+	button.texture_normal = tex("%s_%s.png" % [prefix, face])
+	button.texture_hover = tex("%s_%s.png" % [prefix, hover_face])
+	button.texture_pressed = tex("%s_%s.png" % [prefix, pressed_face])
 	button.texture_disabled = tex("%s_disabled.png" % prefix)
-	button.texture_focused = tex("%s_selected.png" % prefix)
+	button.texture_focused = tex("%s_%s.png" % [prefix, hover_face])
 
 
 static func _load_font(file_name: String) -> Font:

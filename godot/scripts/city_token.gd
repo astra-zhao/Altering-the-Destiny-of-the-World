@@ -4,9 +4,10 @@ extends Button
 
 const UiKit := preload("res://scripts/ui_kit.gd")
 
-const _SIZE := Vector2(172, 168)
+const _SIZE := Vector2(160, 160)
 const _BADGE := Vector2(104, 104)
 const _RING := Vector2(160, 160)
+const _NAME_LIMIT := 78.0
 
 var city_name := ""
 var owner_name := ""
@@ -51,11 +52,14 @@ func _ready() -> void:
 	_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	add_child(_badge)
-	_name = UiKit.label("", UiKit.serif, 20, UiKit.GOLD)
+	_name = UiKit.label("", UiKit.serif, 15, UiKit.GOLD)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UiKit.outline(_name, 6)
+	_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_name.clip_text = true
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	UiKit.outline(_name, 4)
 	add_child(_name)
-	_num = UiKit.label("", UiKit.serif, 22, UiKit.CREAM)
+	_num = UiKit.label("", UiKit.serif, 20, UiKit.CREAM)
 	_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	UiKit.outline(_num, 4)
@@ -65,7 +69,7 @@ func _ready() -> void:
 
 
 func badge_center() -> Vector2:
-	return Vector2(_SIZE.x * 0.5, 22.0 + _BADGE.y * 0.5)
+	return _SIZE * 0.5
 
 
 func redraw() -> void:
@@ -73,16 +77,15 @@ func redraw() -> void:
 
 
 func _layout() -> void:
-	_name.position = Vector2(-16, 0)
-	_name.size = Vector2(_SIZE.x + 32, 22)
-	var badge_pos := Vector2((_SIZE.x - _BADGE.x) * 0.5, 22)
+	var badge_pos := (_SIZE - _BADGE) * 0.5
 	_badge.position = badge_pos
 	_badge.size = _BADGE
-	var ring_pos := badge_pos + (_BADGE - _RING) * 0.5
-	_ring.position = ring_pos
+	_ring.position = badge_pos + (_BADGE - _RING) * 0.5
 	_ring.size = _RING
-	_num.position = badge_pos + Vector2(0, 28)
-	_num.size = Vector2(_BADGE.x, 44)
+	_name.position = badge_pos + Vector2((_BADGE.x - _NAME_LIMIT) * 0.5, 22)
+	_name.size = Vector2(_NAME_LIMIT, 22)
+	_num.position = badge_pos + Vector2(8, 46)
+	_num.size = Vector2(_BADGE.x - 16, 32)
 
 
 func _paint() -> void:
@@ -106,8 +109,18 @@ func _paint() -> void:
 	if holding:
 		title += " · 守"
 	_name.text = title
+	_fit_title(title)
 	_num.text = str(troops)
 	z_index = 0
+
+
+func _fit_title(title: String) -> void:
+	var px := 15
+	var font := UiKit.serif
+	if font != null:
+		while px > 10 and font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, px).x > _NAME_LIMIT:
+			px -= 1
+	_name.add_theme_font_size_override("font_size", px)
 
 
 func _on_enter() -> void:

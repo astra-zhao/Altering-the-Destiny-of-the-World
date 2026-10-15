@@ -82,15 +82,27 @@ func _build() -> void:
 	rewrite.add_theme_constant_override("separation", 6)
 	body.add_child(rewrite)
 	rewrite.add_child(UiKit.label("改写记", UiKit.serif, 22, UiKit.INK))
+	var rewrite_ink := Color("2a1a10")
 	for line in Campaign.rewrite_lines():
-		var bullet := UiKit.label("· " + line, UiKit.sans, 16, UiKit.INK_SOFT)
+		var bullet := UiKit.label("· " + line, UiKit.sans_bold, 18, rewrite_ink)
 		bullet.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		bullet.custom_minimum_size = Vector2(160, 0)
 		bullet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rewrite.add_child(bullet)
-	var yuan_color := UiKit.WARN if Campaign.yuan_status == "已死" else UiKit.INK
-	var yuan := UiKit.label("袁崇焕  %s" % Campaign.yuan_status, UiKit.sans_bold, 16, yuan_color)
-	rewrite.add_child(yuan)
+	var tag := PanelContainer.new()
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = Color("2a1a10")
+	plate.set_corner_radius_all(3)
+	plate.content_margin_left = 12
+	plate.content_margin_right = 12
+	plate.content_margin_top = 4
+	plate.content_margin_bottom = 4
+	tag.add_theme_stylebox_override("panel", plate)
+	var yuan := UiKit.label("袁崇焕  %s" % Campaign.yuan_status, UiKit.sans_bold, 16, UiKit.CREAM)
+	tag.add_child(yuan)
+	rewrite.add_child(tag)
 
 	var grid := GridContainer.new()
 	grid.columns = 2

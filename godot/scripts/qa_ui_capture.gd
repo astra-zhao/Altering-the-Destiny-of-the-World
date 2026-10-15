@@ -6,6 +6,7 @@ extends Node
 const SHOTS := "/opt/cursor/artifacts/screenshots"
 
 var _movie := false
+var _missing := {}
 
 
 func _ready() -> void:
@@ -33,20 +34,37 @@ func _shots() -> void:
 	DirAccess.make_dir_recursive_absolute(SHOTS)
 	var map := await _open_map()
 	await _wait(0.45)
+	_note_glyphs()
+	await _shot("09-next-turn-disabled")
 	await _shot("03-civil-disabled")
 	map._on_city_pressed("C4")
 	await _wait(0.35)
+	_note_glyphs()
 	await _shot("01-map-guide-seals")
-	map._guide.visible = false
-	await _wait(0.05)
+	map._on_help()
+	await _wait(0.2)
+	_note_glyphs()
 	await _shot("02-advisor")
+	map._advisor_panel.hide()
+	map._layout_chrome()
+	map._on_march_mode()
+	await _wait(0.1)
+	await _shot("11-action-selected")
+	map._pick = ""
+	map._refresh_popup()
+	map._on_seal_hover("btn_action_hold", true)
+	await _wait(0.05)
+	await _shot("12-action-hover")
+	map._on_seal_hover("btn_action_hold", false)
 	map._guide.visible = true
 	var preview: Dictionary = Campaign.preview_battle("C4", "C6")
 	map.present_battle("C4", "C6", preview, false, 0.42)
 	await _wait(0.25)
+	_note_glyphs()
 	await _shot("04-battle-run")
 	map.present_battle("C4", "C6", preview, true, 1.0)
 	await _wait(0.2)
+	_note_glyphs()
 	await _shot("05-battle-win")
 	map.present_battle("C6", "C5", _fake_lose(), true, 1.0)
 	await _wait(0.15)
@@ -55,10 +73,20 @@ func _shots() -> void:
 	await _wait(0.15)
 	await _shot("07-battle-draw")
 	map._close_battle()
+	map._advisor_panel.hide()
+	map._on_city_pressed("C4")
+	map._on_hold()
+	map._clear_selection()
+	map._guide.visible = false
+	await _wait(0.25)
+	_note_glyphs()
+	await _shot("10-next-turn-normal")
 	_reach_bing()
 	get_tree().change_scene_to_file("res://scenes/ending.tscn")
 	await _wait(0.55)
+	_note_glyphs()
 	await _shot("08-ending")
+	_print_missing()
 	print("UI_CAPTURE_OK")
 	get_tree().quit(0)
 
@@ -88,6 +116,40 @@ func _open_map() -> Node:
 	push_error("大地图没有起来")
 	get_tree().quit(1)
 	return null
+
+
+func _note_glyphs() -> void:
+	var scene := get_tree().current_scene
+	if scene != null:
+		_walk_glyphs(scene)
+
+
+func _walk_glyphs(node: Node) -> void:
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return
+	if node is Label:
+		var label := node as Label
+		var font: Font = label.get_theme_font("font")
+		var text := label.text
+		var i := 0
+		while i < text.length():
+			var code := text.unicode_at(i)
+			i += 1
+			if code <= 32:
+				continue
+			if font == null or not font.has_char(code):
+				_missing[char(code)] = true
+	for child in node.get_children():
+		_walk_glyphs(child)
+
+
+func _print_missing() -> void:
+	var chars: Array = _missing.keys()
+	chars.sort()
+	if chars.is_empty():
+		print("MISSING_GLYPHS none")
+	else:
+		print("MISSING_GLYPHS %s" % "".join(chars))
 
 
 func _shot(file_name: String) -> void:

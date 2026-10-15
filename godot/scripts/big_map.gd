@@ -27,7 +27,9 @@ var _advisor_lock := false
 
 var _routes: Control
 var _city_layer: Control
-var _top: HBoxContainer
+var _top: Control
+var _chip_row: HBoxContainer
+var _tool_row: HBoxContainer
 var _chips: Dictionary = {}
 var _hint_row: HBoxContainer
 var _hint: Label
@@ -67,6 +69,7 @@ var _def_name: Label
 var _def_role: Label
 var _def_badge: TextureRect
 var _def_num: Label
+var _def_extra: Label
 var _def_mod: Label
 var _def_power: Label
 var _vs: Label
@@ -142,11 +145,14 @@ func _build_ui() -> void:
 
 
 func _build_top() -> void:
-	_top = HBoxContainer.new()
-	_top.add_theme_constant_override("separation", 6)
+	_top = Control.new()
 	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top.z_index = 6
 	add_child(_top)
+	_chip_row = HBoxContainer.new()
+	_chip_row.add_theme_constant_override("separation", 4)
+	_chip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.add_child(_chip_row)
 	for spec in [
 		["silver", "icon_silver_64.png", "银两"],
 		["grain", "icon_grain_64.png", "粮草"],
@@ -156,19 +162,16 @@ func _build_top() -> void:
 		["turn", "icon_turn_64.png", "回合"],
 	]:
 		_chips[str(spec[0])] = _add_chip(str(spec[1]), str(spec[2]))
-	var file_row := HBoxContainer.new()
-	file_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	file_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	file_row.add_theme_constant_override("separation", 4)
-	file_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_top.add_child(file_row)
+	_tool_row = HBoxContainer.new()
+	_tool_row.add_theme_constant_override("separation", 2)
+	_tool_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_tool_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.add_child(_tool_row)
 	for pair in [["存档", _on_save], ["读档", _on_load], ["新局", _on_new_game], ["署名", _on_credits]]:
-		var button := UiKit.link_button(str(pair[0]))
-		button.pressed.connect(pair[1])
-		file_row.add_child(button)
-	_top.add_child(UiKit.icon_rect("icon_volume_64.png", 28))
+		_tool_row.add_child(_compact_link(str(pair[0]), pair[1]))
+	_tool_row.add_child(UiKit.icon_rect("icon_volume_64.png", 22))
 	_volume = HSlider.new()
-	_volume.custom_minimum_size = Vector2(108, 28)
+	_volume.custom_minimum_size = Vector2(64, 28)
 	_volume.min_value = 0
 	_volume.max_value = 1
 	_volume.step = 0.01
@@ -176,36 +179,53 @@ func _build_top() -> void:
 	_volume.tooltip_text = "音量。拉到最左就是静音。"
 	_style_slider(_volume)
 	_volume.value_changed.connect(_on_volume)
-	_top.add_child(_volume)
-	_mute_button = UiKit.link_button("静音")
-	_mute_button.pressed.connect(_on_mute)
-	_top.add_child(_mute_button)
+	_tool_row.add_child(_volume)
+	_mute_button = _compact_link("静音", _on_mute)
+	_tool_row.add_child(_mute_button)
+
+
+func _compact_link(text: String, handler: Callable) -> Button:
+	var button := UiKit.link_button(text)
+	button.add_theme_font_size_override("font_size", 14)
+	var empty := StyleBoxEmpty.new()
+	empty.content_margin_left = 3
+	empty.content_margin_right = 3
+	empty.content_margin_top = 2
+	empty.content_margin_bottom = 2
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, empty)
+	button.pressed.connect(handler)
+	return button
 
 
 func _add_chip(icon_name: String, caption: String) -> Label:
 	var plate := UiKit.nine("hud_chip_normal.png", 10)
-	plate.custom_minimum_size = Vector2(132, 46)
+	plate.custom_minimum_size = Vector2(158, 46)
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_top.add_child(plate)
+	_chip_row.add_child(plate)
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 8
-	row.offset_top = 6
-	row.offset_right = -8
-	row.offset_bottom = -6
+	row.offset_left = 6
+	row.offset_top = 3
+	row.offset_right = -6
+	row.offset_bottom = -3
 	row.add_theme_constant_override("separation", 4)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(row)
-	row.add_child(UiKit.icon_rect(icon_name, 26))
-	var text := VBoxContainer.new()
-	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(text)
-	var name := UiKit.label(caption, UiKit.sans, 12, UiKit.CREAM)
-	text.add_child(name)
+	row.add_child(UiKit.icon_rect(icon_name, 40))
+	var name := UiKit.label(caption, UiKit.sans, 13, UiKit.CREAM)
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.clip_text = true
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(name)
 	var value := UiKit.label("0", UiKit.serif, 18, UiKit.GOLD)
-	text.add_child(value)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value.size_flags_horizontal = Control.SIZE_SHRINK_END
+	row.add_child(value)
 	return value
 
 
@@ -357,11 +377,11 @@ func _seal_slot(parent: Node, prefix: String, caption: String, handler: Callable
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 2)
-	box.clip_contents = true
-	box.custom_minimum_size = Vector2(128, 0)
+	box.custom_minimum_size = Vector2(144, 0)
 	parent.add_child(box)
 	var button := UiKit.seal_button(prefix)
-	button.custom_minimum_size = Vector2(128, 128)
+	button.custom_minimum_size = Vector2(144, 144)
+	button.ignore_texture_size = true
 	button.pressed.connect(handler)
 	box.add_child(button)
 	var plaque_wrap := CenterContainer.new()
@@ -419,27 +439,31 @@ func _build_advisor() -> void:
 	_advisor_panel = UiKit.nine("panel_advisor.png", 20)
 	_advisor_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_advisor_panel.clip_contents = true
+	_advisor_panel.custom_minimum_size = Vector2(470, 214)
 	_advisor_panel.z_index = 5
 	add_child(_advisor_panel)
 	var inner := MarginContainer.new()
 	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
-	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		inner.add_theme_constant_override(side, 18)
+	inner.add_theme_constant_override("margin_left", 12)
+	inner.add_theme_constant_override("margin_right", 12)
+	inner.add_theme_constant_override("margin_top", 14)
+	inner.add_theme_constant_override("margin_bottom", 12)
 	_advisor_panel.add_child(inner)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 4)
 	inner.add_child(column)
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 10)
+	head.custom_minimum_size = Vector2(0, 44)
+	head.add_theme_constant_override("separation", 8)
 	column.add_child(head)
-	var avatar := UiKit.icon_rect("advisor_avatar.png", 72)
+	var avatar := UiKit.icon_rect("advisor_avatar.png", 44)
 	head.add_child(avatar)
 	var titles := VBoxContainer.new()
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titles.alignment = BoxContainer.ALIGNMENT_CENTER
 	head.add_child(titles)
-	titles.add_child(UiKit.label("帮我选", UiKit.serif, 28, UiKit.GOLD))
-	titles.add_child(UiKit.label("谋士献策 · 点一条即执行", UiKit.sans, 15, UiKit.CREAM))
+	titles.add_child(UiKit.label("帮我选", UiKit.serif, 20, UiKit.GOLD))
+	titles.add_child(UiKit.label("谋士献策 · 点一条即执行", UiKit.sans, 13, UiKit.CREAM))
 	var fold := UiKit.link_button("收起")
 	fold.pressed.connect(func() -> void:
 		_advisor_panel.hide()
@@ -447,8 +471,9 @@ func _build_advisor() -> void:
 	)
 	head.add_child(fold)
 	_advisor_list = VBoxContainer.new()
-	_advisor_list.add_theme_constant_override("separation", 4)
+	_advisor_list.add_theme_constant_override("separation", 2)
 	column.add_child(_advisor_list)
+	_advisor_panel.hide()
 
 
 func _build_guide() -> void:
@@ -516,6 +541,12 @@ func _layout_chrome() -> void:
 		return
 	_top.position = Vector2(8, 8)
 	_top.size = Vector2(size.x - 16, 50)
+	var tools := _tool_row.get_combined_minimum_size()
+	_tool_row.position = Vector2(_top.size.x - tools.x, 2)
+	_tool_row.size = Vector2(tools.x, 46)
+	var chip_span := maxf(0.0, _tool_row.position.x - 6.0)
+	_chip_row.position = Vector2(0, 2)
+	_chip_row.size = Vector2(chip_span, 46)
 	var hint_w := minf(560.0, size.x - 320.0)
 	_hint_row.position = Vector2(8, 62)
 	_hint_row.size = Vector2(hint_w, 68)
@@ -524,6 +555,7 @@ func _layout_chrome() -> void:
 	var side_limit := size.y - 248.0
 	_side.size = Vector2(272, minf(maxf(side_min.y, 280.0), maxf(200.0, side_limit - _side.position.y)))
 	_end_button.position = Vector2(size.x - 200, size.y - 196)
+	_end_button.size = Vector2(188, 188)
 	_end_reason.position = Vector2(size.x - 204, _end_button.position.y - 50)
 	_end_reason.size = Vector2(188, 48)
 	_layout_advisor()
@@ -539,10 +571,9 @@ func _layout_advisor() -> void:
 		_help_button.position = Vector2(16, size.y - 70)
 		return
 	_help_button.visible = false
-	var width := minf(500.0, maxf(420.0, size.x * 0.40))
-	var inner_h := _advisor_list.get_combined_minimum_size().y + 118.0
-	var height := clampf(inner_h, 214.0, 312.0)
-	_advisor_panel.position = Vector2(12, size.y - 12 - height)
+	var height := 214.0
+	var width := 470.0
+	_advisor_panel.position = Vector2(12, size.y - 8 - height)
 	_advisor_panel.size = Vector2(width, height)
 
 
@@ -671,7 +702,7 @@ func _apply_seal(which: String, state: Dictionary, picked: bool) -> void:
 	reason.visible = not enabled
 	reason.text = str(state["why"]) if not enabled else ""
 	button.tooltip_text = str(state["why"])
-	UiKit.paint_seal(button, str(slot["prefix"]), picked)
+	UiKit.paint_seal(button, str(slot["prefix"]), picked, bool(slot["hover"]))
 	var mode := "normal"
 	if not enabled:
 		mode = "disabled"
@@ -713,6 +744,20 @@ func _refresh_end() -> void:
 	var state := _end_state()
 	var enabled := bool(state["on"])
 	_end_button.disabled = not enabled
+	_end_button.modulate = Color.WHITE
+	_end_button.self_modulate = Color.WHITE
+	if enabled:
+		_end_button.texture_normal = UiKit.tex("btn_next_turn_normal.png")
+		_end_button.texture_hover = UiKit.tex("btn_next_turn_hover.png")
+		_end_button.texture_pressed = UiKit.tex("btn_next_turn_pressed.png")
+		_end_button.texture_focused = UiKit.tex("btn_next_turn_normal.png")
+	else:
+		var gray := UiKit.tex("btn_next_turn_disabled.png")
+		_end_button.texture_normal = gray
+		_end_button.texture_hover = gray
+		_end_button.texture_pressed = gray
+		_end_button.texture_disabled = gray
+		_end_button.texture_focused = gray
 	_end_reason.visible = not enabled
 	_end_reason.text = str(state["why"]) if not enabled else ""
 	_end_button.tooltip_text = str(state["why"])
@@ -749,6 +794,13 @@ func _refresh_guide() -> void:
 		origin = Vector2(488, size.y - 96)
 	else:
 		origin = _clear_of(rect.position + Vector2(rect.size.x + 12, 8), panel, _guide_spots(rect, panel), false)
+	if _advisor_panel != null and _advisor_panel.visible:
+		var adv := _advisor_panel.get_global_rect()
+		var guide_rect := Rect2(origin, panel)
+		if guide_rect.intersects(adv):
+			origin.x = adv.end.x + 8.0
+			if origin.x + panel.x > size.x - 8.0:
+				origin = Vector2(maxf(8.0, adv.position.x), maxf(140.0, adv.position.y - panel.y - 8.0))
 	_guide_bubble.position = rect.position + Vector2(-4, -10) - _guide.global_position
 	_guide_bubble.size = Vector2(32, 32)
 	_guide_panel.position = origin - _guide.global_position
@@ -989,6 +1041,7 @@ func _on_help() -> void:
 	_advisor_panel.visible = true
 	_fill_advisor()
 	_layout_advisor()
+	_refresh_guide()
 
 
 func _fill_advisor() -> void:
@@ -1015,29 +1068,31 @@ func _advisor_row(index: int, action: Dictionary) -> Control:
 	var button := Button.new()
 	button.focus_mode = Control.FOCUS_NONE
 	button.clip_contents = true
-	button.custom_minimum_size = Vector2(0, 64)
+	button.custom_minimum_size = Vector2(446, 42)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.add_theme_stylebox_override("normal", UiKit.style_tex("row_recommend_normal.png", 6, 6))
-	button.add_theme_stylebox_override("hover", UiKit.style_tex("row_recommend_hover.png", 6, 6))
-	button.add_theme_stylebox_override("pressed", UiKit.style_tex("row_recommend_pressed.png", 6, 6))
-	button.add_theme_stylebox_override("disabled", UiKit.style_tex("row_recommend_disabled.png", 6, 6))
-	button.add_theme_stylebox_override("focus", UiKit.style_tex("row_recommend_selected.png", 6, 6))
-	button.add_theme_stylebox_override("hover_pressed", UiKit.style_tex("row_recommend_selected.png", 6, 6))
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.add_theme_stylebox_override("normal", _row_style("row_recommend_normal.png"))
+	button.add_theme_stylebox_override("hover", _row_style("row_recommend_hover.png"))
+	button.add_theme_stylebox_override("pressed", _row_style("row_recommend_pressed.png"))
+	button.add_theme_stylebox_override("disabled", _row_style("row_recommend_disabled.png"))
+	button.add_theme_stylebox_override("focus", _row_style("row_recommend_selected.png"))
+	button.add_theme_stylebox_override("hover_pressed", _row_style("row_recommend_selected.png"))
 	button.disabled = not bool(action.get("executable", true))
-	button.tooltip_text = str(action.get("reason", ""))
+	var reason_text := str(action.get("reason", ""))
+	button.tooltip_text = "%s\n%s" % [str(action.get("title", "")), reason_text]
 	button.pressed.connect(_on_advisor_pick.bind(action))
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 8
-	row.offset_top = 4
+	row.offset_top = 0
 	row.offset_right = -8
-	row.offset_bottom = -4
+	row.offset_bottom = 0
 	row.add_theme_constant_override("separation", 8)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	button.add_child(row)
 	var bubble := Control.new()
-	bubble.custom_minimum_size = Vector2(28, 28)
+	bubble.custom_minimum_size = Vector2(26, 26)
 	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(bubble)
 	var bubble_tex := TextureRect.new()
@@ -1052,21 +1107,26 @@ func _advisor_row(index: int, action: Dictionary) -> Control:
 	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	num.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bubble.add_child(num)
-	var text := VBoxContainer.new()
-	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.add_theme_constant_override("separation", 0)
-	row.add_child(text)
 	var title := UiKit.label(str(action.get("title", "")), UiKit.serif, 16, UiKit.CREAM)
-	title.clip_text = true
-	title.custom_minimum_size = Vector2(40, 20)
-	text.add_child(title)
-	var reason := UiKit.label(str(action.get("reason", "")), UiKit.sans, 13, Color(0.86, 0.8, 0.7))
-	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	reason.custom_minimum_size = Vector2(240, 28)
+	title.custom_minimum_size = Vector2(0, 28)
+	title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	row.add_child(title)
+	var reason := UiKit.label(reason_text, UiKit.sans, 13, Color(0.86, 0.8, 0.7))
+	reason.clip_text = true
+	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reason.custom_minimum_size = Vector2(40, 28)
 	reason.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text.add_child(reason)
+	row.add_child(reason)
 	return button
+
+
+func _row_style(file_name: String) -> StyleBoxTexture:
+	var box := UiKit.style_tex(file_name, 6, 0)
+	box.content_margin_left = 0
+	box.content_margin_top = 0
+	box.content_margin_right = 0
+	box.content_margin_bottom = 0
+	return box
 
 
 func _on_advisor_pick(action: Dictionary) -> void:
@@ -1212,8 +1272,13 @@ func _fill_battle(info: Dictionary, resolved: bool) -> void:
 	_def_role.text = "守军"
 	_atk_num.text = str(src_show)
 	_def_num.text = str(dst_show)
-	_atk_extra.visible = int(info["sent"]) != src_show
-	_atk_extra.text = "出兵 %d" % int(info["sent"])
+	_atk_extra.visible = true
+	_def_extra.visible = true
+	_def_extra.text = ""
+	if int(info["sent"]) != src_show:
+		_atk_extra.text = "出兵 %d" % int(info["sent"])
+	else:
+		_atk_extra.text = ""
 	_atk_mod.text = "袁部 ×1.25" if bool(info["yuan_bonus"]) else "×1.00"
 	var terrain := "地形 ×%s" % _fmt_mul(int(info["terrain_pct"]))
 	if bool(info["held"]):
@@ -1304,9 +1369,9 @@ func _build_battle() -> void:
 	var content := VBoxContainer.new()
 	content.set_anchors_preset(Control.PRESET_FULL_RECT)
 	content.offset_left = 48
-	content.offset_top = 42
+	content.offset_top = 36
 	content.offset_right = -48
-	content.offset_bottom = -28
+	content.offset_bottom = -78
 	content.add_theme_constant_override("separation", 8)
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle_frame.add_child(content)
@@ -1341,41 +1406,57 @@ func _build_battle() -> void:
 func _battle_column(attacker: bool) -> Control:
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	box.add_theme_constant_override("separation", 2)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name := UiKit.label("", UiKit.serif, 28, UiKit.GOLD)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name.custom_minimum_size = Vector2(160, 36)
 	box.add_child(name)
 	var role := UiKit.label("", UiKit.sans, 16, UiKit.CREAM)
 	role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	role.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	role.custom_minimum_size = Vector2(160, 22)
 	box.add_child(role)
+	# 切图有效圆 84/104。放到 164，画面上的城印直径约 132。
+	var holder_wrap := CenterContainer.new()
+	holder_wrap.custom_minimum_size = Vector2(164, 164)
+	holder_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(holder_wrap)
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(120, 120)
+	holder.custom_minimum_size = Vector2(164, 164)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(holder)
+	holder_wrap.add_child(holder)
 	var badge := TextureRect.new()
 	badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.position = Vector2(8, 8)
-	badge.size = Vector2(104, 104)
+	badge.position = Vector2.ZERO
+	badge.size = Vector2(164, 164)
 	holder.add_child(badge)
-	var num := UiKit.label("", UiKit.serif, 28, UiKit.CREAM)
+	var num := UiKit.label("", UiKit.serif, 36, UiKit.CREAM)
 	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	num.position = Vector2(8, 36)
-	num.size = Vector2(104, 44)
+	num.position = Vector2(16, 54)
+	num.size = Vector2(132, 56)
 	UiKit.outline(num, 4)
 	holder.add_child(num)
 	var extra := UiKit.label("", UiKit.sans, 15, UiKit.CREAM)
 	extra.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	extra.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	extra.custom_minimum_size = Vector2(140, 22)
 	box.add_child(extra)
 	var mod := UiKit.label("", UiKit.sans, 16, UiKit.GOLD)
 	mod.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mod.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mod.custom_minimum_size = Vector2(160, 22)
 	box.add_child(mod)
 	var power := UiKit.label("", UiKit.serif, 18, UiKit.CREAM)
 	power.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	power.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	power.custom_minimum_size = Vector2(160, 24)
 	box.add_child(power)
 	if attacker:
 		_atk_name = name
@@ -1390,18 +1471,23 @@ func _battle_column(attacker: bool) -> Control:
 		_def_role = role
 		_def_badge = badge
 		_def_num = num
+		_def_extra = extra
 		_def_mod = mod
 		_def_power = power
-		extra.visible = false
 	return box
 
 
 func _battle_center() -> Control:
 	var box := VBoxContainer.new()
 	box.custom_minimum_size = Vector2(220, 0)
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	box.add_theme_constant_override("separation", 6)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 60)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(spacer)
 	var stage := CenterContainer.new()
 	stage.custom_minimum_size = Vector2(180, 160)
 	box.add_child(stage)
