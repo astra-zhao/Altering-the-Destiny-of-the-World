@@ -14,7 +14,7 @@
 
 第一次会生成 `godot/.godot/`，已写入仓库 `.gitignore`。
 
-界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，969 字子集，含「差」以及预判、预警、判定清单用字，另含全部可打印 ASCII U+0020–U+007E 和半角 `=`，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。Godot 只引用三份 `.otf`（`scripts/ui_kit.gd` 和主题）。同名 `.woff2` 留在仓库里给 H5，`web/` 仍用系统字体族名，没有引用这些文件。macOS 导出预设排除 `*.woff2`，包里只有 otf。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
+界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，969 字子集，含「差」以及预判、预警、判定清单用字，另含全部可打印 ASCII U+0020–U+007E 和半角 `=`，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。Godot 只引用三份 `.otf`（`scripts/ui_kit.gd` 和主题）。同名 `.woff2` 留在仓库里给 H5，`web/` 仍用系统字体族名，没有引用这些文件。macOS 导出预设排除 `*.woff2`，包里只有 otf。`uid_cache.bin` 虽是强制导出，里面的 qa、检查脚本和 woff2 路径会在打包时去掉。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
 
 ## 怎么玩
 
@@ -197,7 +197,7 @@ cd godot
 
 | 路径 | 作用 |
 | --- | --- |
-| `project.godot` | 工程入口，4.6 / Forward Plus，版本 0.3.0 |
+| `project.godot` | 工程入口，4.6 / Forward Plus，版本 0.3.1 |
 | `audio/tracks/*.ogg` | 地图、简战、剧情、结局。同名替换 |
 | `audio/ATTRIBUTION.md` | 四首的授权页面 |
 | `scripts/bgm.gd` | 四轨 Stream 循环，静音走 BGM 总线，主音量走 Master |
