@@ -2,10 +2,12 @@ extends Node3D
 ## S2 袁崇焕生死。朝堂与法场两个机位，写回后回大地图。剧情中不提供存档。
 
 const Kit := preload("res://scripts/story_kit.gd")
+const StoryBoard := preload("res://scripts/story_board.gd")
 
 var _camera: Camera3D
 var _choices: VBoxContainer
 var _sub: Label
+var _layer: CanvasLayer
 var _court := Vector3(0.2, 3.4, 7.4)
 var _field := Vector3(5.6, 2.5, 1.6)
 var _choice_cam := Vector3(1.4, 2.7, 5.2)
@@ -38,8 +40,30 @@ func _aim(point: Vector3) -> void:
 
 
 func _reveal() -> void:
-	_sub.text = "选定后立刻写回。D 要先在登基夜结交袁。"
-	_choices.visible = true
+	_choices.visible = false
+	var old := _choices.get_parent().get_parent() as CanvasItem
+	if old != null:
+		old.visible = false
+	if _layer.get_node_or_null("StoryBoard") != null:
+		return
+	var locked := not Campaign.befriended_yuan
+	StoryBoard.mount(_layer, {
+		"which": "s2",
+		"kicker": "剧情 2/3",
+		"title": "袁崇焕生死",
+		"sub": "朝堂与法场。先看清局面，再定他的去向。",
+		"on_choose": _choose,
+		"tabs": [
+			{"text": "看朝堂", "on_press": _look_mode.bind("court")},
+			{"text": "看法场", "on_press": _look_mode.bind("field")},
+		],
+		"choices": [
+			{"id": "A", "title": "处死", "parts": [{"text": "袁已死", "kind": "status"}, {"text": "辽东 -20", "kind": "cost"}, {"text": "压力 +15", "kind": "cost"}, {"text": "世界线 +5", "kind": "world"}]},
+			{"id": "B", "title": "下狱", "parts": [{"text": "袁闲置", "kind": "status"}, {"text": "辽东 -8", "kind": "cost"}, {"text": "世界线 +15", "kind": "world"}]},
+			{"id": "C", "title": "复辽职", "parts": [{"text": "前线可用", "kind": "status"}, {"text": "辽东 +12", "kind": "gain"}, {"text": "银 -10", "kind": "cost"}, {"text": "民心 -5", "kind": "cost"}, {"text": "世界线 +30", "kind": "world"}]},
+			{"id": "D", "title": "调京营", "locked": locked, "lock_reason": "尚未结交袁崇焕，不能选", "parts": [{"text": "袁京营", "kind": "status"}, {"text": "辽东 +4", "kind": "gain"}, {"text": "世界线 +20", "kind": "world"}]},
+		],
+	})
 
 
 func _look_mode(mode: String) -> void:
@@ -102,8 +126,9 @@ func _build_world() -> void:
 
 
 func _build_ui() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
+	_layer = CanvasLayer.new()
+	add_child(_layer)
+	var layer := _layer
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -156,6 +181,8 @@ func _build_ui() -> void:
 func _add_choice(choice_id: String, text: String, disabled: bool = false) -> void:
 	var button := Button.new()
 	button.text = text
+	button.set_meta("choice_id", choice_id)
+	button.set_meta("base_text", text)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.custom_minimum_size = Vector2(0, 58)
 	button.disabled = disabled

@@ -6,6 +6,8 @@ const Baseline := preload("res://data/campaign_baseline.gd")
 const UiKit := preload("res://scripts/ui_kit.gd")
 
 var _points: Dictionary = {}
+var _hot: Array = []
+var redraw_count := 0
 
 
 func _ready() -> void:
@@ -19,19 +21,66 @@ func set_points(points: Dictionary) -> void:
 	queue_redraw()
 
 
+func set_hot(routes: Array) -> void:
+	if _same_hot(routes):
+		return
+	_hot = routes.duplicate(true)
+	queue_redraw()
+
+
+func _same_hot(routes: Array) -> bool:
+	if routes.size() != _hot.size():
+		return false
+	for i in routes.size():
+		var next: Dictionary = routes[i]
+		var prev: Dictionary = _hot[i]
+		if str(next.get("a", "")) != str(prev.get("a", "")):
+			return false
+		if str(next.get("b", "")) != str(prev.get("b", "")):
+			return false
+		if bool(next.get("far", false)) != bool(prev.get("far", false)):
+			return false
+	return true
+
+
+func _hot_far(a_id: String, b_id: String) -> bool:
+	for route in _hot:
+		var left := str(route.get("a", ""))
+		var right := str(route.get("b", ""))
+		if (left == a_id and right == b_id) or (left == b_id and right == a_id):
+			return bool(route.get("far", false))
+	return false
+
+
+func _is_hot(a_id: String, b_id: String) -> bool:
+	for route in _hot:
+		var left := str(route.get("a", ""))
+		var right := str(route.get("b", ""))
+		if (left == a_id and right == b_id) or (left == b_id and right == a_id):
+			return true
+	return false
+
+
 func _draw() -> void:
+	redraw_count += 1
 	if _points.is_empty():
 		return
 	var solid := Color(0.831, 0.659, 0.294, 0.92)
 	var faded := Color(0.831, 0.659, 0.294, 0.55)
+	var hot_color := Color(0.98, 0.86, 0.45, 1.0)
 	for route in Baseline.ROUTES:
-		var a: Vector2 = _points.get(str(route["a"]), Vector2.INF)
-		var b: Vector2 = _points.get(str(route["b"]), Vector2.INF)
+		var a_id := str(route["a"])
+		var b_id := str(route["b"])
+		var a: Vector2 = _points.get(a_id, Vector2.INF)
+		var b: Vector2 = _points.get(b_id, Vector2.INF)
 		if a == Vector2.INF or b == Vector2.INF:
 			continue
+		var hot := _is_hot(a_id, b_id)
 		if bool(route["far"]):
-			draw_dashed_line(a, b, faded, 2.0, 9.0, true, true)
+			draw_dashed_line(a, b, hot_color if hot else faded, 4.0 if hot else 2.0, 9.0, true, true)
 			_draw_route_label(a, b, "远邻")
+		elif hot:
+			draw_line(a, b, hot_color, 4.2, true)
 		else:
 			draw_line(a, b, solid, 2.4, true)
 	var sea: Vector2 = size * Vector2(0.80, 0.84)

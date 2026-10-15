@@ -14,8 +14,10 @@ var owner_name := ""
 var troops := 0
 var marked := false
 var hinted := false
+var lit := false
 var yuan_here := false
 var holding := false
+var paint_count := 0
 
 var _ring: TextureRect
 var _badge: TextureRect
@@ -91,6 +93,7 @@ func _layout() -> void:
 func _paint() -> void:
 	if _badge == null:
 		return
+	paint_count += 1
 	var kind := "jin"
 	if owner_name == "明":
 		kind = "ming"
@@ -99,10 +102,11 @@ func _paint() -> void:
 	var state := "normal"
 	if marked or _down:
 		state = "selected"
-	elif _hover or hinted:
+	elif _hover or hinted or lit:
 		state = "hover"
 	_badge.texture = UiKit.tex("city_badge_%s_%s.png" % [kind, state])
-	_ring.visible = marked
+	_ring.visible = marked or lit
+	_ring.modulate = Color(1, 0.86, 0.45, 0.9) if lit and not marked else Color.WHITE
 	var title := city_name
 	if yuan_here:
 		title += " · 袁"

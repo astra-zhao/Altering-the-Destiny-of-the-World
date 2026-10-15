@@ -28,6 +28,8 @@ var held_ningyuan := false
 var loyalist_success := false
 var pending_story := ""
 var ending_id := ""
+## 终局结算前、最后一次还能改主意时，帮我选认定的最好结局。失败页用这一个字。
+var outlook_before_finale := ""
 var skip_ending_scene := false
 ## 0 点城，1 选行动，2 结束回合，3 已完成。跳过或完成后写入引导标记。
 var guide_step := 0
@@ -68,6 +70,7 @@ func reset() -> void:
 	loyalist_success = false
 	pending_story = ""
 	ending_id = ""
+	outlook_before_finale = ""
 	skip_ending_scene = false
 	log_text = "第 1 回合。先点一座我方的城。"
 	guide_step = 0
@@ -223,14 +226,16 @@ func end_turn() -> Dictionary:
 		return {"ok": false, "goto": "settle", "message": log_text}
 	if not main_done:
 		return _fail("先完成主行动（行军、攻城或固守），再结束回合。")
+	# 终局前最后一次还能改主意的局面。结算和 AI 还没写进去。
+	if s3_done:
+		var advisor = load("res://scripts/advisor.gd")
+		outlook_before_finale = str(advisor.best_ending(self))
 	if not civil_done:
 		civil("skip", "")
 	var ai_line := _run_ai()
 	hold_city = ""
 	if s3_done:
-		return _begin_settlement("%s终局前夜之后进入结算。" % ai_line)
-	if turn >= Baseline.TURN_LIMIT:
-		return _begin_settlement("%s第 %d 回合结束。超时，按当前局面结算，不粉饰。" % [ai_line, Baseline.TURN_LIMIT])
+		return _begin_settlement("%s第 %d 回合结束，进入结算。" % [ai_line, turn])
 	turn += 1
 	main_done = false
 	civil_done = false
@@ -284,7 +289,7 @@ func apply_s1(choice: String) -> Dictionary:
 
 func summary_lines() -> PackedStringArray:
 	return PackedStringArray([
-		"回合 %d / %d" % [turn, Baseline.TURN_LIMIT],
+		"回合 %d / %d" % [turn, Baseline.PLAY_TURNS],
 		"银两 %d　粮草 %d　民心 %d" % [silver, grain, morale],
 		"辽东稳固 %d　后金压力 %d　世界线 %d" % [liaodong, pressure, worldline],
 		"袁崇焕 %s　结交袁 %s　勤王 %s" % [yuan_status, "是" if befriended_yuan else "否", "成功" if loyalist_success else "否"],
@@ -487,6 +492,7 @@ func snapshot() -> Dictionary:
 		"loyalist_success": loyalist_success,
 		"pending_story": pending_story,
 		"ending_id": ending_id,
+		"outlook_before_finale": outlook_before_finale,
 		"log_text": log_text,
 		"guide_step": guide_step,
 		"guide_done": guide_done,
@@ -581,16 +587,19 @@ func apply_snapshot(data: Dictionary) -> bool:
 	pending_story = str(data["pending_story"])
 	ending_id = str(data["ending_id"])
 	log_text = str(data["log_text"])
+	outlook_before_finale = str(data.get("outlook_before_finale", ""))
 	guide_done = next_guide_done
 	guide_step = next_guide_step
 	# 磁盘标记表示已经跳过或走完。中途存档不能把引导再叫出来。坏标记仍当作没跳过。
 	if guide_disk_dismissed():
 		guide_done = true
 		guide_step = 3
+	_clamp_stats()
 	for id in parsed:
 		var info: Dictionary = cities[id]
 		info["faction"] = str(parsed[id]["faction"])
 		info["troops"] = int(parsed[id]["troops"])
+	_clamp_stats()
 	return true
 
 
@@ -858,6 +867,7 @@ func _shift_front(src_faction: String, dst_faction: String, dst_id: String, outc
 		pressure += 8
 		if dst_id == "C4" or dst_id == "C6":
 			liaodong -= 6
+	_clamp_stats()
 
 
 func _displace_yuan(from_id: String) -> void:
@@ -873,8 +883,388 @@ func _displace_yuan(from_id: String) -> void:
 
 
 func _ok(message: String) -> Dictionary:
+	_clamp_stats()
 	_log(message)
 	return {"ok": true, "message": message}
+
+
+func _clamp_stats() -> void:
+	silver = maxi(0, silver)
+	grain = maxi(0, grain)
+	morale = maxi(0, morale)
+	liaodong = maxi(0, liaodong)
+	pressure = maxi(0, pressure)
+	worldline = maxi(0, worldline)
+
+
+## 黄/红只作提示。开局辽东稳固正好 40，不亮。
+func danger_marks() -> Dictionary:
+	var marks := {}
+	if morale <= 15:
+		marks["morale"] = "red"
+	elif morale <= 25:
+		marks["morale"] = "yellow"
+	if silver <= 0:
+		marks["silver"] = "red"
+	elif silver <= 10:
+		marks["silver"] = "yellow"
+	if liaodong < 40:
+		marks["liaodong"] = "red"
+	return marks
+
+
+func danger_line() -> String:
+	var marks: Dictionary = danger_marks()
+	if marks.is_empty():
+		return ""
+	var parts: PackedStringArray = []
+	if str(marks.get("morale", "")) == "red":
+		parts.append("民心 %d，已到 15" % morale)
+	elif str(marks.get("morale", "")) == "yellow":
+		parts.append("民心 %d，已到 25，再低到 15 就要小心" % morale)
+	if str(marks.get("silver", "")) == "red":
+		parts.append("银两 %d，已到 0" % silver)
+	elif str(marks.get("silver", "")) == "yellow":
+		parts.append("银两 %d，已到 10，用尽就会落到丁" % silver)
+	if marks.has("liaodong"):
+		parts.append("辽东稳固 %d，不到 40" % liaodong)
+	return "小心：" + "；".join(parts)
+
+
+func finale_hint() -> String:
+	if settled:
+		return ""
+	if s3_done or turn >= Baseline.PLAY_TURNS:
+		return "本回合是终局，点下一回合进入结局。"
+	if turn >= 6:
+		return "下回合是京师危机，再下回合是终局。"
+	return ""
+
+
+func march_options(src_id: String) -> Array[String]:
+	var found: Array[String] = []
+	if settled or main_done:
+		return found
+	var src := city(src_id)
+	if src.is_empty() or str(src["faction"]) != "明" or int(src["troops"]) < 2:
+		return found
+	for hop in neighbors_of(src_id):
+		var dst_id := str(hop["id"])
+		if str(city(dst_id)["faction"]) != "明":
+			continue
+		var cost := Baseline.MARCH_GRAIN_FAR if bool(hop["far"]) else Baseline.MARCH_GRAIN
+		if grain < cost:
+			continue
+		found.append(dst_id)
+	return found
+
+
+func march_block_reason(src_id: String) -> String:
+	if not march_options(src_id).is_empty():
+		return ""
+	if settled or main_done:
+		return "本回合已行动"
+	var src := city(src_id)
+	if src.is_empty() or str(src["faction"]) != "明":
+		return "先点一座我方的城"
+	if int(src["troops"]) < 2:
+		return "兵力不足，至少留 1 人守城"
+	var any_ming := false
+	var need := Baseline.MARCH_GRAIN
+	for hop in neighbors_of(src_id):
+		if str(city(str(hop["id"]))["faction"]) != "明":
+			continue
+		any_ming = true
+		var cost := Baseline.MARCH_GRAIN_FAR if bool(hop["far"]) else Baseline.MARCH_GRAIN
+		need = maxi(need, cost)
+	if not any_ming:
+		return "没有相邻的我方城"
+	return "粮草不足（需要 %d）" % need
+
+
+func attack_options(src_id: String) -> Array[String]:
+	var found: Array[String] = []
+	if settled or main_done:
+		return found
+	var src := city(src_id)
+	if src.is_empty() or str(src["faction"]) != "明" or int(src["troops"]) < 2:
+		return found
+	for hop in neighbors_of(src_id):
+		var dst_id := str(hop["id"])
+		if str(city(dst_id)["faction"]) == "明":
+			continue
+		var preview := preview_battle(src_id, dst_id)
+		if bool(preview.get("ok", false)):
+			found.append(dst_id)
+	return found
+
+
+func attack_block_reason(src_id: String) -> String:
+	if not attack_options(src_id).is_empty():
+		return ""
+	if settled or main_done:
+		return "本回合已行动"
+	var src := city(src_id)
+	if src.is_empty() or str(src["faction"]) != "明":
+		return "先点一座我方的城"
+	if int(src["troops"]) < 2:
+		return "兵力不足，出不了兵"
+	return "旁边没有可打的城"
+
+
+func attack_preview_line(src_id: String) -> String:
+	var parts: PackedStringArray = []
+	for dst_id in attack_options(src_id):
+		var preview := preview_battle(src_id, dst_id)
+		parts.append("%s攻%s，预计%s" % [city(src_id)["name"], city(dst_id)["name"], str(preview.get("label", ""))])
+	return "；".join(parts)
+
+
+## 预判条只回答「如果现在结算」。照★走到底的最好结局不放在这里。
+func forecast_view() -> Dictionary:
+	var now := resolve_ending()
+	var bits := _avoid_bits(now)
+	return {
+		"ending": now,
+		"plate": _plate_name(now),
+		"lead": "照现在这样，预计得",
+		"avoid": _bits_plain(bits),
+		"bits": bits,
+		"danger": now == "丁",
+	}
+
+
+func forecast_text(_best_ending: String = "") -> String:
+	var view := forecast_view()
+	return "结局预判 %s %s。%s" % [str(view["lead"]), str(view["plate"]), str(view["avoid"])]
+
+
+func settlement_checks() -> Array:
+	var ending := ending_id if ending_id != "" else resolve_ending()
+	var rows: Array = []
+	var capital := str(city("C1")["faction"]) == "明"
+	if ending == "丁":
+		if not capital:
+			rows.append(_check_row("京师不在明军手里", true, -1, true))
+		else:
+			rows.append(_check_row("辽东稳固低于 40", liaodong < 40, liaodong, liaodong < 40))
+			rows.append(_check_row("并且，下面任意一条", false, -1, false, "note"))
+		rows.append(_check_row("民心 ≤ 15", morale <= 15, morale, morale <= 15))
+		rows.append(_check_row("银两 ≤ 0", silver <= 0, silver, silver <= 0))
+	elif ending == "甲":
+		rows.append(_check_row("袁崇焕未死", yuan_status != "已死", -1, false))
+		rows.append(_check_row("辽东稳固 ≥ 60", liaodong >= 60, liaodong, false))
+		rows.append(_check_row("后金压力 ≤ 40", pressure <= 40, pressure, false))
+		rows.append(_check_row("世界线 ≥ 35", worldline >= 35, worldline, false))
+	elif ending == "乙":
+		rows.append(_check_row("京师在明军手里", capital, -1, false))
+		rows.append(_check_row("辽东稳固 ≥ 40", liaodong >= 40, liaodong, false))
+		rows.append(_check_row("民心 ≥ 45", morale >= 45, morale, false))
+	else:
+		rows.append(_check_row("辽东稳固 ≥ 40", liaodong >= 40, liaodong, false))
+		rows.append(_check_row("民心 ≥ 45", morale >= 45, morale, false))
+		rows.append(_check_row("民心 ≤ 15", morale <= 15, morale, morale <= 15))
+		rows.append(_check_row("银两 ≤ 0", silver <= 0, silver, silver <= 0))
+	return rows
+
+
+func stat_hits() -> Dictionary:
+	var hits := {}
+	var ending := ending_id if ending_id != "" else resolve_ending()
+	if ending != "丁":
+		return hits
+	if morale <= 15:
+		hits["morale"] = true
+	if silver <= 0:
+		hits["silver"] = true
+	if liaodong < 40:
+		hits["liaodong"] = true
+	if str(city("C1")["faction"]) != "明":
+		hits["capital"] = true
+	return hits
+
+
+func settlement_basis() -> String:
+	var ending := ending_id if ending_id != "" else resolve_ending()
+	var head := "第 %d 回合结算，依据：这一局打到第 %d 回合就结算，不是中途被判负。" % [turn, Baseline.PLAY_TURNS]
+	var nums := "当时银两 %d，粮草 %d，民心 %d，辽东稳固 %d，后金压力 %d，世界线 %d。袁崇焕 %s。京师 %s。" % [
+		silver, grain, morale, liaodong, pressure, worldline, yuan_status,
+		"在明军手里" if str(city("C1")["faction"]) == "明" else "已不在明军手里",
+	]
+	return "%s%s %s" % [head, _rule_sentence(ending), nums]
+
+
+func _plate_name(ending: String) -> String:
+	match ending:
+		"甲":
+			return "甲·中兴微光"
+		"乙":
+			return "乙·残局续命"
+		"丁":
+			return "丁·另途崩解"
+		"丙":
+			return "丙·史实沉响"
+		_:
+			return ending
+
+
+func _avoid_bits(now: String) -> Array:
+	if now == "甲":
+		return [{"text": "保持现状即可", "color": "FFD978"}]
+	if now == "丁":
+		var line := "想避开：辽东回到 40 以上，或民心 ≥ 16 且银两 > 0"
+		if str(city("C1")["faction"]) != "明":
+			line = "想避开：京师不在，民心 ≥ 16 且银两 > 0"
+		return [{"text": line, "color": "FFB4A6"}]
+	return _gap_bits()
+
+
+func _gap_bits() -> Array:
+	var items: Array = []
+	if yuan_status == "已死":
+		items.append({"text": "袁已死", "num": false})
+	else:
+		if str(city("C1")["faction"]) != "明":
+			items.append({"text": "京师不在", "num": false})
+		if liaodong < 60:
+			items.append({"text": "辽东 +%d" % (60 - liaodong), "num": true})
+		if pressure > 40:
+			items.append({"text": "压力 −%d" % (pressure - 40), "num": true})
+		if worldline < 35:
+			items.append({"text": "世界线 +%d" % (35 - worldline), "num": true})
+	if items.is_empty():
+		items.append({"text": "守住现有局面", "num": false})
+	var bits := _join_gap(items)
+	if _hanzi_count(_bits_plain(bits)) <= 22:
+		return bits
+	var short_items: Array = []
+	for item in items:
+		var text := str(item["text"]).replace("世界线", "世").replace("辽东", "辽").replace("压力", "压").replace("京师不在", "京师")
+		short_items.append({"text": text, "num": item["num"]})
+	bits = _join_gap(short_items)
+	while short_items.size() > 1 and _hanzi_count(_bits_plain(bits)) > 22:
+		short_items.pop_back()
+		bits = _join_gap(short_items)
+	return bits
+
+
+func _join_gap(items: Array) -> Array:
+	var bits: Array = [{"text": "想升到甲，还差：", "color": "F6DC92"}]
+	var first := true
+	for item in items:
+		if not first:
+			bits.append({"text": "，", "color": "F6DC92"})
+		first = false
+		var color := "FFD978" if bool(item.get("num", false)) else "F6DC92"
+		bits.append({"text": str(item["text"]), "color": color})
+	return bits
+
+
+func _bits_plain(bits: Array) -> String:
+	var plain := ""
+	for bit in bits:
+		plain += str(bit["text"])
+	return plain
+
+
+func _hanzi_count(text: String) -> int:
+	var count := 0
+	var i := 0
+	while i < text.length():
+		if text.unicode_at(i) > 0x2E7F:
+			count += 1
+		i += 1
+	return count
+
+
+func _check_row(text: String, met: bool, value: int, hit: bool, kind: String = "rule") -> Dictionary:
+	return {"text": text, "met": met, "value": value, "hit": hit, "kind": kind}
+
+
+func _ending_name(ending: String) -> String:
+	match ending:
+		"甲":
+			return "甲 · 中兴微光"
+		"乙":
+			return "乙 · 残局续命"
+		"丁":
+			return "丁 · 另途崩解"
+		"丙":
+			return "丙 · 史实沉响"
+		_:
+			return ending
+
+
+func upgrade_gaps() -> PackedStringArray:
+	var ending := ending_id if ending_id != "" else resolve_ending()
+	var lines := PackedStringArray()
+	if ending == "甲":
+		return lines
+	var capital := str(city("C1")["faction"]) == "明"
+	if not capital:
+		lines.append("差：京师须留在明军手里")
+	if yuan_status == "已死":
+		lines.append("差：袁崇焕已死，到不了甲")
+	else:
+		if liaodong < 60:
+			lines.append("差 %d：辽东稳固须 ≥60" % (60 - liaodong))
+		if pressure > 40:
+			lines.append("差 %d：后金压力须 ≤40" % (pressure - 40))
+		if worldline < 35:
+			lines.append("差 %d：世界线须 ≥35" % (35 - worldline))
+	if ending != "乙" and capital and liaodong < 40 and morale < 45:
+		lines.append("到乙差 %d：辽东稳固须 ≥40，或差 %d：民心须 ≥45" % [40 - liaodong, 45 - morale])
+	return lines
+
+
+func _better_gaps(now: String) -> String:
+	if now == "甲":
+		return ""
+	var parts: PackedStringArray = []
+	if now != "乙":
+		if str(city("C1")["faction"]) != "明":
+			parts.append("要到乙，京师得留在明军手里")
+		else:
+			if liaodong < 40 and morale < 45:
+				parts.append("要到乙，辽东稳固要到 40，或民心要到 45")
+	if yuan_status == "已死":
+		parts.append("甲要袁崇焕未死，这一局已经走不到甲")
+	else:
+		var jia: PackedStringArray = []
+		if liaodong < 60:
+			jia.append("辽东稳固要到 60")
+		if pressure > 40:
+			jia.append("后金压力要到 40 或更低")
+		if worldline < 35:
+			jia.append("世界线要到 35")
+		if str(city("C1")["faction"]) != "明":
+			jia.append("京师要留在明军手里")
+		if not jia.is_empty():
+			parts.append("要到甲，还要" + "，".join(jia))
+	return "".join(parts) + ("。" if not parts.is_empty() else "")
+
+
+func _rule_sentence(ending: String) -> String:
+	var capital := str(city("C1")["faction"]) == "明"
+	if ending == "甲":
+		return "走到甲：袁崇焕未死，辽东稳固 %d 已到 60，后金压力 %d 不高于 40，世界线 %d 已到 35，京师在明军手里。" % [liaodong, pressure, worldline]
+	if ending == "乙":
+		var why := "辽东稳固 %d 已到 40" % liaodong if liaodong >= 40 else "民心 %d 已到 45" % morale
+		return "走到乙：京师在明军手里，且%s。甲还没齐。" % why
+	if ending == "丁":
+		var hits: PackedStringArray = []
+		if morale <= 15:
+			hits.append("民心 %d，已到 15 或更低" % morale)
+		if silver <= 0:
+			hits.append("银两 %d，已到 0" % silver)
+		var gate := "辽东稳固 %d，不到 40，民心 %d，也不到 45" % [liaodong, morale]
+		if not capital:
+			gate = "京师已不在明军手里"
+		return "走到丁：%s。同时%s。" % [gate, "；".join(hits)]
+	var why_not_yi := "辽东稳固 %d 不到 40，民心 %d 也不到 45" % [liaodong, morale]
+	if not capital:
+		why_not_yi = "京师不在明军手里"
+	return "走到丙：%s。民心 %d 高于 15，银两 %d 高于 0，所以不是丁。" % [why_not_yi, morale, silver]
 
 
 func _fail(message: String) -> Dictionary:

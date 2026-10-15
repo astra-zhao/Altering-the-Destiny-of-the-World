@@ -15,6 +15,8 @@ const SKIP_FILES := {
 	"res://scripts/bgm_check.gd": true,
 	"res://scripts/qa_audio_real.gd": true,
 	"res://scripts/glyph_subset_check.gd": true,
+	"res://scripts/v031_check.gd": true,
+	"res://scripts/qa_v031_shots.gd": true,
 }
 
 

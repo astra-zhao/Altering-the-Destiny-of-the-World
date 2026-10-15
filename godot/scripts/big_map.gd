@@ -24,6 +24,8 @@ var _in_battle := false
 var _turn_busy := false
 var _end_locked_until := 0
 var _advisor_lock := false
+var layout_calls := 0
+var _best_ending := ""
 
 var _routes: Control
 var _city_layer: Control
@@ -34,6 +36,14 @@ var _chips: Dictionary = {}
 var _hint_row: HBoxContainer
 var _hint: Label
 var _log: Label
+var _chip_meta: Dictionary = {}
+var _forecast_bar: NinePatchRect
+var _forecast_plate: TextureRect
+var _forecast_name: Label
+var _forecast_bits: HBoxContainer
+var _turn_banner: NinePatchRect
+var _outlook: Label
+var _self_button: Button
 var _side: VBoxContainer
 var _yuan_line: Label
 var _cards: Dictionary = {}
@@ -139,6 +149,8 @@ func _build_ui() -> void:
 	add_child(_city_layer)
 	_build_actions()
 	_build_top()
+	_build_forecast()
+	_build_banner()
 	_build_hint_row()
 	_build_side()
 	_build_advisor()
@@ -164,7 +176,7 @@ func _build_top() -> void:
 		["pressure", "icon_pressure_64.png", "后金压力"],
 		["turn", "icon_turn_64.png", "回合"],
 	]:
-		_chips[str(spec[0])] = _add_chip(_chip_row, str(spec[1]), str(spec[2]))
+		_chips[str(spec[0])] = _add_chip(_chip_row, str(spec[1]), str(spec[2]), str(spec[0]))
 	_tool_row = HBoxContainer.new()
 	_tool_row.add_theme_constant_override("separation", 2)
 	_tool_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -202,35 +214,128 @@ func _compact_link(text: String, handler: Callable) -> Button:
 	return button
 
 
-func _add_chip(parent: Node, icon_name: String, caption: String) -> Label:
+func _add_chip(parent: Node, icon_name: String, caption: String, slot: String) -> Label:
 	var plate := UiKit.nine("hud_chip_normal.png", 10)
-	plate.custom_minimum_size = Vector2(158, 50)
+	plate.custom_minimum_size = Vector2(150, 48)
+	plate.clip_contents = false
 	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	plate.set_meta("slot", slot)
 	parent.add_child(plate)
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 10
-	row.offset_top = 10
-	row.offset_right = -10
-	row.offset_bottom = -10
+	row.offset_left = 8
+	row.offset_top = 6
+	row.offset_right = -6
+	row.offset_bottom = -4
 	row.add_theme_constant_override("separation", 4)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(row)
-	row.add_child(UiKit.icon_rect(icon_name, 28))
+	row.add_child(UiKit.icon_rect(icon_name, 24))
 	var name := UiKit.label(caption, UiKit.sans, 13, UiKit.CREAM)
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name.clip_text = true
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(name)
-	var value := UiKit.label("0", UiKit.serif, 16, UiKit.GOLD)
+	var value := UiKit.label("0", UiKit.sans_bold, 17, UiKit.GOLD)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	value.size_flags_horizontal = Control.SIZE_SHRINK_END
 	row.add_child(value)
+	var tag := Control.new()
+	tag.name = "WarnTag"
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.visible = false
+	tag.custom_minimum_size = Vector2(64, 24)
+	tag.size = Vector2(64, 24)
+	tag.z_index = 2
+	plate.add_child(tag)
+	var tag_bg := TextureRect.new()
+	tag_bg.texture = UiKit.tex("tag_warn_yellow.png")
+	tag_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tag_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tag_bg.stretch_mode = TextureRect.STRETCH_SCALE
+	tag_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(tag_bg)
+	var mark := UiKit.icon_rect("icon_warn_yellow_32.png", 14)
+	mark.visible = false
+	mark.position = Vector2(4, 5)
+	mark.size = Vector2(14, 14)
+	tag.add_child(mark)
+	var tag_text := UiKit.label("注意", UiKit.sans_bold, 13, Color("2A1A10"))
+	tag_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tag_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tag_text.offset_left = 16
+	tag_text.offset_right = -2
+	tag.add_child(tag_text)
+	_chip_meta[plate] = {
+		"value": value,
+		"mark": mark,
+		"tag": tag,
+		"tag_bg": tag_bg,
+		"tag_text": tag_text,
+		"caption": name,
+	}
 	return value
+
+
+func _build_forecast() -> void:
+	_forecast_bar = UiKit.nine("strip_forecast_normal.png", 10)
+	_forecast_bar.name = "ForecastBar"
+	_forecast_bar.z_index = 7
+	_forecast_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_forecast_bar)
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 10
+	row.offset_top = 4
+	row.offset_right = -8
+	row.offset_bottom = -4
+	row.add_theme_constant_override("separation", 8)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_forecast_bar.add_child(row)
+	var cap := UiKit.label("结局预判", UiKit.serif, 16, UiKit.GOLD)
+	row.add_child(cap)
+	row.add_child(UiKit.label("照现在这样，预计得", UiKit.sans, 15, UiKit.CREAM))
+	_forecast_plate = TextureRect.new()
+	_forecast_plate.texture = UiKit.tex("plate_end_yi.png")
+	_forecast_plate.custom_minimum_size = Vector2(112, 34)
+	_forecast_plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_forecast_plate.stretch_mode = TextureRect.STRETCH_SCALE
+	_forecast_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_forecast_plate)
+	_forecast_name = UiKit.label("乙·残局续命", UiKit.serif, 16, UiKit.CREAM)
+	_forecast_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_forecast_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_forecast_name.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_forecast_plate.add_child(_forecast_name)
+	_forecast_bits = HBoxContainer.new()
+	_forecast_bits.name = "ForecastAvoid"
+	_forecast_bits.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_forecast_bits.add_theme_constant_override("separation", 0)
+	_forecast_bits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_forecast_bits.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(_forecast_bits)
+
+
+func _build_banner() -> void:
+	_turn_banner = UiKit.nine("banner_turn_warn.png", 18)
+	_turn_banner.name = "TurnBanner"
+	_turn_banner.z_index = 7
+	_turn_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_turn_banner.visible = false
+	add_child(_turn_banner)
+	var label := UiKit.label("下回合是京师危机，再下回合是终局", UiKit.sans_bold, 16, Color("FFD24A"))
+	label.name = "BannerContent"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.position = Vector2(8, 8)
+	label.size = Vector2(560, 38)
+	_turn_banner.add_child(label)
 
 
 func _build_hint_row() -> void:
@@ -241,7 +346,7 @@ func _build_hint_row() -> void:
 	add_child(_hint_row)
 	var plate := UiKit.nine("panel_frame_s.png", 10)
 	plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	plate.custom_minimum_size = Vector2(280, 68)
+	plate.custom_minimum_size = Vector2(280, 108)
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hint_row.add_child(plate)
 	var column := VBoxContainer.new()
@@ -446,6 +551,7 @@ func _build_advisor() -> void:
 	_help_button.pressed.connect(_on_help)
 	add_child(_help_button)
 	_advisor_panel = UiKit.nine("panel_advisor.png", 20)
+	_advisor_panel.name = "AdvisorPanel"
 	_advisor_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_advisor_panel.clip_contents = true
 	_advisor_panel.custom_minimum_size = Vector2(470, 214)
@@ -471,8 +577,26 @@ func _build_advisor() -> void:
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	titles.alignment = BoxContainer.ALIGNMENT_CENTER
 	head.add_child(titles)
-	titles.add_child(UiKit.label("帮我选", UiKit.serif, 20, UiKit.GOLD))
+	var title_line := HBoxContainer.new()
+	title_line.custom_minimum_size = Vector2(0, 22)
+	title_line.add_theme_constant_override("separation", 6)
+	title_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	titles.add_child(title_line)
+	title_line.add_child(UiKit.label("帮我选", UiKit.serif, 20, UiKit.GOLD))
+	_outlook = UiKit.label("", UiKit.sans_bold, 14, Color("D4A84B"))
+	_outlook.name = "OutlookLine"
+	_outlook.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_outlook.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_outlook.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_outlook.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_outlook.clip_text = false
+	title_line.add_child(_outlook)
 	titles.add_child(UiKit.label("谋士献策 · 点一条即执行", UiKit.sans, 13, UiKit.CREAM))
+	_self_button = UiKit.link_button("自己选")
+	_self_button.name = "SelfPick"
+	_self_button.add_theme_font_size_override("font_size", 14)
+	_self_button.pressed.connect(_toggle_self)
+	head.add_child(_self_button)
 	var fold := UiKit.link_button("收起")
 	fold.pressed.connect(func() -> void:
 		_advisor_panel.hide()
@@ -548,19 +672,33 @@ func _layout_chrome() -> void:
 	if _top == null or size.x < 80.0:
 		return
 	_top.position = Vector2(8, 8)
-	_top.size = Vector2(size.x - 16, 54)
+	_top.size = Vector2(size.x - 16, 50)
 	if _mute_button != null:
 		_mute_button.custom_minimum_size.x = float(_mute_button.text.length()) * 15.0 + 8.0
 	var tools := _tool_row.get_combined_minimum_size()
-	_tool_row.position = Vector2(_top.size.x - tools.x, 2)
-	_tool_row.size = Vector2(tools.x, 50)
+	_tool_row.position = Vector2(_top.size.x - tools.x, 0)
+	_tool_row.size = Vector2(tools.x, 48)
 	var chip_span := maxf(0.0, _tool_row.position.x - 6.0)
-	_chip_row.position = Vector2(0, 2)
-	_chip_row.size = Vector2(chip_span, 50)
+	_chip_row.position = Vector2(0, 0)
+	_chip_row.size = Vector2(chip_span, 48)
 	_fit_chips()
-	var hint_w := minf(560.0, size.x - 320.0)
-	_hint_row.position = Vector2(8, 62)
-	_hint_row.size = Vector2(hint_w, 68)
+	if _forecast_bar != null:
+		_forecast_bar.position = Vector2(12, 58)
+		var forecast_w := 970.0
+		var side_left := size.x - 284.0
+		if 12.0 + forecast_w > side_left - 8.0:
+			forecast_w = maxf(420.0, side_left - 20.0)
+		_forecast_bar.size = Vector2(forecast_w, 44)
+	if _turn_banner != null:
+		# 贴图 576×54，含 8px 外光。内容区 560×38，中心落在 x=640。
+		var banner_w := 576.0
+		var banner_h := 54.0
+		_turn_banner.size = Vector2(banner_w, banner_h)
+		var center_x := 640.0 if is_equal_approx(size.x, 1280.0) else size.x * 0.5
+		_turn_banner.position = Vector2(center_x - banner_w * 0.5, 98)
+	var hint_w := minf(520.0, size.x - 320.0)
+	_hint_row.position = Vector2(8, 156)
+	_hint_row.size = Vector2(hint_w, 72)
 	_side.position = Vector2(size.x - 284, 62)
 	_side.clip_contents = true
 	var seal := 188.0
@@ -627,6 +765,7 @@ func _position_markers() -> void:
 
 
 func _layout_actions() -> void:
+	layout_calls += 1
 	if _actions == null or not _actions.visible or _selected_id == "" or not _markers.has(_selected_id):
 		return
 	var token: Control = _markers[_selected_id]
@@ -646,7 +785,7 @@ func _refresh() -> void:
 	_chips["morale"].text = str(Campaign.morale)
 	_chips["liaodong"].text = str(Campaign.liaodong)
 	_chips["pressure"].text = str(Campaign.pressure)
-	var turn_text := "%d/%d" % [Campaign.turn, Baseline.TURN_LIMIT]
+	var turn_text := "%d/%d" % [Campaign.turn, Baseline.PLAY_TURNS]
 	if Campaign.settled:
 		turn_text += " 完"
 	_chips["turn"].text = turn_text
@@ -667,6 +806,9 @@ func _refresh() -> void:
 	_refresh_cards()
 	_refresh_end()
 	_fill_advisor()
+	_paint_danger()
+	_paint_forecast()
+	_paint_banner()
 	_refresh_guide()
 
 
@@ -676,17 +818,43 @@ func _next_hint() -> String:
 	if Campaign.settled:
 		return "下一步：这一局已经结束。可以读档，或开一局新的。"
 	if Campaign.pending_story != "":
-		return "下一步：要进剧情了。里面的选项得你自己点。"
+		return "下一步：要进剧情了。选项要你点，画面上有 ★推荐。"
+	if _pick == "march":
+		if Campaign.march_options(_selected_id).is_empty():
+			return Campaign.march_block_reason(_selected_id)
+		return "点亮的城可以行军。"
+	if _pick == "attack":
+		var preview := Campaign.attack_preview_line(_selected_id)
+		if preview == "":
+			return Campaign.attack_block_reason(_selected_id)
+		return "点亮的城可以攻。%s" % preview
+	var finale := Campaign.finale_hint()
 	if not Campaign.main_done and _selected_id == "":
-		return "下一步：先点一座我方的城（金色的）。"
+		return _with_finale(finale, "下一步：先点一座我方的城（金色的）。")
 	if not Campaign.main_done:
-		return "下一步：点旁边的城出兵，或在下面选固守。右边的内政也可以先做。"
+		return _with_finale(finale, "下一步：点旁边的城出兵，或在下面选固守。右边的内政也可以先做。")
 	if not Campaign.civil_done:
-		return "下一步：内政还能做一次。不做的话，直接点「下一回合」。"
-	return "下一步：点右下角红色的「下一回合」。"
+		return _with_finale(finale, "下一步：内政还能做一次。不做的话，直接点「下一回合」。")
+	return _with_finale(finale, "下一步：点右下角红色的「下一回合」。")
+
+
+func _with_finale(finale: String, line: String) -> String:
+	if finale == "":
+		return line
+	return "%s %s" % [finale, line]
 
 
 func _refresh_markers() -> void:
+	var lit := {}
+	var hot: Array = []
+	if _pick == "march" and _selected_id != "":
+		for dst_id in Campaign.march_options(_selected_id):
+			lit[str(dst_id)] = true
+			hot.append({"a": _selected_id, "b": str(dst_id), "far": Campaign.route_far(_selected_id, str(dst_id))})
+	elif _pick == "attack" and _selected_id != "":
+		for dst_id in Campaign.attack_options(_selected_id):
+			lit[str(dst_id)] = true
+			hot.append({"a": _selected_id, "b": str(dst_id), "far": Campaign.route_far(_selected_id, str(dst_id))})
 	for city_id in _markers:
 		var info := Campaign.city(str(city_id))
 		var token = _markers[city_id]
@@ -694,15 +862,30 @@ func _refresh_markers() -> void:
 		token.owner_name = Campaign.display_owner(str(city_id))
 		token.troops = int(info["troops"])
 		token.marked = str(city_id) == _selected_id
-		token.hinted = _selected_id != "" and str(city_id) != _selected_id and Campaign.is_adjacent(_selected_id, str(city_id))
+		token.lit = lit.has(str(city_id))
+		token.hinted = _pick == "" and _selected_id != "" and str(city_id) != _selected_id and Campaign.is_adjacent(_selected_id, str(city_id))
 		token.yuan_here = Campaign.yuan_city == str(city_id)
 		token.holding = Campaign.hold_city == str(city_id)
-		token.tooltip_text = "%s，%s，兵力 %d。点它可选中或作为目标。" % [info["name"], token.owner_name, int(info["troops"])]
+		token.tooltip_text = ""
 		token.redraw()
-		if token.marked:
-			_city_layer.move_child(token, _city_layer.get_child_count() - 1)
+	if _routes != null and _routes.has_method("set_hot"):
+		_routes.set_hot(hot)
+	_raise_selection()
+
+
+func _raise_selection() -> void:
+	if _city_layer == null:
+		return
+	if _selected_id != "" and _markers.has(_selected_id) and _actions != null:
+		var token: Node = _markers[_selected_id]
+		var last := _city_layer.get_child_count() - 1
+		if last >= 1 and _city_layer.get_child(last) == _actions and _city_layer.get_child(last - 1) == token:
+			return
+		_city_layer.move_child(token, last)
 	if _actions != null:
-		_city_layer.move_child(_actions, _city_layer.get_child_count() - 1)
+		var last_now := _city_layer.get_child_count() - 1
+		if _city_layer.get_child(last_now) != _actions:
+			_city_layer.move_child(_actions, last_now)
 
 
 func _refresh_popup() -> void:
@@ -731,11 +914,12 @@ func _apply_seal(which: String, state: Dictionary, picked: bool) -> void:
 	var reason: Label = slot["reason"]
 	var plaque: NinePatchRect = slot["plaque"]
 	var enabled := bool(state["on"])
-	button.disabled = not enabled
+	slot["on"] = enabled
+	button.disabled = false
 	reason.visible = not enabled
 	reason.text = str(state["why"]) if not enabled else ""
-	button.tooltip_text = str(state["why"])
-	UiKit.paint_seal(button, str(slot["prefix"]), picked, bool(slot["hover"]))
+	button.tooltip_text = ""
+	UiKit.paint_seal(button, str(slot["prefix"]), picked, bool(slot["hover"]), not enabled)
 	var mode := "normal"
 	if not enabled:
 		mode = "disabled"
@@ -748,10 +932,11 @@ func _apply_seal(which: String, state: Dictionary, picked: bool) -> void:
 
 func _on_seal_hover(prefix: String, inside: bool) -> void:
 	for which in _seals:
-		if str(_seals[which]["prefix"]) == prefix:
-			_seals[which]["hover"] = inside
-	if _actions.visible:
-		_refresh_popup()
+		var slot: Dictionary = _seals[which]
+		if str(slot["prefix"]) != prefix:
+			continue
+		slot["hover"] = inside
+		UiKit.paint_seal(slot["button"], prefix, _pick == str(which), inside, not bool(slot.get("on", true)))
 
 
 func _refresh_cards() -> void:
@@ -851,33 +1036,28 @@ func _fit_chips() -> void:
 		return
 	_chip_row.size.x = span
 	var each := (span - sep * float(count - 1)) / float(count)
-	var tight := each < 150.0
-	each = clampf(each, 92.0, 168.0)
+	each = clampf(each, 108.0, 174.0)
 	for child in _chip_row.get_children():
 		var plate := child as Control
-		plate.clip_contents = true
-		if plate.get_child_count() == 0:
+		plate.clip_contents = false
+		plate.custom_minimum_size = Vector2(each, 48)
+		var meta: Dictionary = _chip_meta.get(plate, {})
+		if meta.is_empty():
 			continue
-		var row := plate.get_child(0) as Control
-		row.offset_left = 6.0 if tight else 10.0
-		row.offset_right = -6.0 if tight else -10.0
-		if row.get_child_count() < 3:
-			plate.custom_minimum_size = Vector2(each, 50)
-			continue
-		var icon := row.get_child(0) as Control
-		icon.custom_minimum_size = Vector2(22, 22) if tight else Vector2(28, 28)
-		var caption := row.get_child(1) as Label
-		var value := row.get_child(2) as Label
+		var value: Label = meta["value"]
+		value.add_theme_font_override("font", UiKit.sans_bold)
+		value.add_theme_font_size_override("font_size", 17)
+		var caption: Label = meta["caption"]
 		if caption != null:
-			caption.visible = true
-			caption.add_theme_font_size_override("font_size", 12 if tight else 13)
-		if value != null:
-			value.add_theme_font_size_override("font_size", 14 if tight else 16)
-		plate.custom_minimum_size = Vector2(each, 50)
-		if tight and plate.get_combined_minimum_size().x > each + 1.0 and caption != null:
-			caption.visible = false
-			plate.custom_minimum_size = Vector2(minf(each, 112.0), 50)
-	_chip_row.size = Vector2(span, 50)
+			caption.visible = each >= 132.0
+			caption.add_theme_font_size_override("font_size", 13)
+		var mark: Control = meta["mark"]
+		mark.custom_minimum_size = Vector2(14, 14)
+		mark.size = Vector2(14, 14)
+		var tag: Control = meta["tag"]
+		tag.size = Vector2(64, 24)
+		tag.position = Vector2(maxf(0.0, each - 66.0), 0)
+	_chip_row.size = Vector2(span, 48)
 
 
 func _fit_side() -> void:
@@ -1039,7 +1219,8 @@ func _clear_of(preferred: Vector2, block: Vector2, spots: Array, for_actions: bo
 			continue
 		var token: Control = _markers[city_id]
 		obstacles.append(token.get_global_rect().grow(4))
-	if _actions != null and _actions.visible:
+	# 排行动面板时不能把自己算成障碍，否则每次调用都会躲开自己，位置来回跳。
+	if _actions != null and _actions.visible and not for_actions:
 		var seal_rect := _actions.get_global_rect()
 		for which in _seals:
 			var slot: Dictionary = _seals[which]
@@ -1155,21 +1336,34 @@ func _clear_selection() -> void:
 
 
 func _on_march_mode() -> void:
-	if bool(_seals["march"]["button"].disabled):
+	var state := _march_state()
+	if not bool(state["on"]):
+		_show_note(str(state["why"]))
+		if _hint != null:
+			_hint.text = str(state["why"])
 		return
 	_pick = "march"
-	_show_note("行军：再点一座相邻的我方城。")
+	_show_note("点亮的城可以行军。")
 	_refresh_markers()
 	_refresh_popup()
+	if _hint != null:
+		_hint.text = "点亮的城可以行军。"
 
 
 func _on_attack_mode() -> void:
-	if bool(_seals["attack"]["button"].disabled):
+	var state := _attack_state()
+	if not bool(state["on"]):
+		_show_note(str(state["why"]))
+		if _hint != null:
+			_hint.text = str(state["why"])
 		return
 	_pick = "attack"
-	_show_note("攻城：再点一座相邻的敌城。")
+	var line := str(state["why"])
+	_show_note(line)
 	_refresh_markers()
 	_refresh_popup()
+	if _hint != null:
+		_hint.text = line
 
 
 func _on_hold() -> void:
@@ -1233,13 +1427,26 @@ func _on_help() -> void:
 
 
 func _fill_advisor() -> void:
+	var recs: Array = AdvisorScript.recommend(Campaign)
+	_best_ending = ""
+	for action in recs:
+		if _best_ending == "":
+			_best_ending = str(action.get("aim", ""))
+		if bool(action.get("best", false)):
+			_best_ending = str(action.get("aim", _best_ending))
+	if _outlook != null:
+		_outlook.add_theme_font_override("font", UiKit.sans_bold)
+		_outlook.add_theme_font_size_override("font_size", 14)
+		_outlook.add_theme_color_override("font_color", Color("D4A84B"))
+		_outlook.text = "" if AdvisorScript.self_pick() else AdvisorScript.head_line(Campaign)
+	if _self_button != null:
+		_self_button.text = "自己选 开" if AdvisorScript.self_pick() else "自己选"
 	if _advisor_list == null or not _advisor_panel.visible:
 		_layout_advisor()
 		return
 	for child in _advisor_list.get_children():
 		_advisor_list.remove_child(child)
 		child.queue_free()
-	var recs: Array = AdvisorScript.recommend(Campaign)
 	if recs.is_empty():
 		var empty := UiKit.label("现在没有可推荐的行动。", UiKit.sans, 15, UiKit.CREAM)
 		_advisor_list.add_child(empty)
@@ -1266,8 +1473,11 @@ func _advisor_row(index: int, action: Dictionary) -> Control:
 	button.add_theme_stylebox_override("focus", _row_style("row_recommend_selected.png"))
 	button.add_theme_stylebox_override("hover_pressed", _row_style("row_recommend_selected.png"))
 	button.disabled = not bool(action.get("executable", true))
+	var show_star := not AdvisorScript.self_pick()
 	var reason_text := str(action.get("reason", ""))
-	button.tooltip_text = "%s\n%s" % [str(action.get("title", "")), reason_text]
+	if show_star and bool(action.get("best", false)) and str(action.get("outlook", "")) != "":
+		reason_text = "%s %s" % [reason_text, str(action.get("outlook", ""))]
+	button.tooltip_text = ""
 	button.pressed.connect(_on_advisor_pick.bind(action))
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1296,7 +1506,9 @@ func _advisor_row(index: int, action: Dictionary) -> Control:
 	num.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bubble.add_child(num)
 	var title_text := str(action.get("title", ""))
-	var title := UiKit.label(title_text, UiKit.serif, 16, UiKit.CREAM)
+	if show_star and bool(action.get("best", false)):
+		title_text = "★最优 " + title_text
+	var title := UiKit.label(title_text, UiKit.serif, 16, UiKit.GOLD if show_star and bool(action.get("best", false)) else UiKit.CREAM)
 	var title_w := 72.0
 	if UiKit.serif != null:
 		title_w = UiKit.serif.get_string_size(title_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
@@ -1572,7 +1784,7 @@ func _build_battle() -> void:
 		["pressure", "icon_pressure_64.png", "后金压力"],
 		["turn", "icon_turn_64.png", "回合"],
 	]:
-		_battle_chips[str(spec[0])] = _add_chip(_battle_top, str(spec[1]), str(spec[2]))
+		_battle_chips[str(spec[0])] = _add_chip(_battle_top, str(spec[1]), str(spec[2]), str(spec[0]))
 	_battle_frame = UiKit.nine("panel_frame_l.png", 26)
 	_battle_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle.add_child(_battle_frame)
@@ -1816,48 +2028,117 @@ func _on_credits() -> void:
 func _march_state() -> Dictionary:
 	if _in_battle:
 		return {"on": false, "why": "战斗进行中"}
-	if Campaign.settled or Campaign.main_done:
-		return {"on": false, "why": "这个回合的主行动已经用过"}
-	if _selected_id == "" or str(Campaign.city(_selected_id)["faction"]) != "明":
-		return {"on": false, "why": "先点一座我方的城"}
-	if int(Campaign.city(_selected_id)["troops"]) < 2:
-		return {"on": false, "why": "兵力不足，至少留 1 人守城"}
-	var near := false
-	var far_only := false
-	for hop in Campaign.neighbors_of(_selected_id):
-		if str(Campaign.city(str(hop["id"]))["faction"]) != "明":
-			continue
-		near = true
-		if bool(hop["far"]):
-			far_only = true
-		else:
-			far_only = false
-			break
-	if not near:
-		return {"on": false, "why": "没有相邻的我方城"}
-	var cost := Baseline.MARCH_GRAIN_FAR if far_only else Baseline.MARCH_GRAIN
-	if Campaign.grain < cost:
-		return {"on": false, "why": "粮草不足（需要 %d）" % cost}
-	return {"on": true, "why": "再点相邻我方城。近邻耗粮 %d，远邻耗粮 %d。" % [Baseline.MARCH_GRAIN, Baseline.MARCH_GRAIN_FAR]}
+	var why := Campaign.march_block_reason(_selected_id)
+	if why != "":
+		return {"on": false, "why": why}
+	return {"on": true, "why": "点亮的城可以行军。近邻耗粮 %d，远邻耗粮 %d。" % [Baseline.MARCH_GRAIN, Baseline.MARCH_GRAIN_FAR]}
 
 
 func _attack_state() -> Dictionary:
 	if _in_battle:
 		return {"on": false, "why": "战斗进行中"}
-	if Campaign.settled or Campaign.main_done:
-		return {"on": false, "why": "这个回合的主行动已经用过"}
-	if _selected_id == "" or str(Campaign.city(_selected_id)["faction"]) != "明":
-		return {"on": false, "why": "先点一座我方的城"}
-	if int(Campaign.city(_selected_id)["troops"]) < 2:
-		return {"on": false, "why": "兵力不足，出不了兵"}
-	var any_enemy := false
-	for hop in Campaign.neighbors_of(_selected_id):
-		if str(Campaign.city(str(hop["id"]))["faction"]) != "明":
-			any_enemy = true
-			break
-	if not any_enemy:
-		return {"on": false, "why": "旁边没有可打的城"}
-	return {"on": true, "why": "再点相邻的敌城。打不打得过，开战前会先算给你看。"}
+	var why := Campaign.attack_block_reason(_selected_id)
+	if why != "":
+		return {"on": false, "why": why}
+	return {"on": true, "why": "点亮的城可以攻。%s" % Campaign.attack_preview_line(_selected_id)}
+
+
+func _paint_danger() -> void:
+	var marks: Dictionary = Campaign.danger_marks()
+	for plate in _chip_meta:
+		var meta: Dictionary = _chip_meta[plate]
+		var key := str((plate as Node).get_meta("slot", ""))
+		var level := str(marks.get(key, ""))
+		var value: Label = meta["value"]
+		value.add_theme_font_override("font", UiKit.sans_bold)
+		value.add_theme_font_size_override("font_size", 17)
+		var mark: TextureRect = meta["mark"]
+		var tag: Control = meta["tag"]
+		var tag_bg: TextureRect = meta["tag_bg"]
+		var tag_text: Label = meta["tag_text"]
+		var nine := plate as NinePatchRect
+		mark.custom_minimum_size = Vector2(14, 14)
+		mark.size = Vector2(14, 14)
+		mark.position = Vector2(4, 5)
+		tag.size = Vector2(64, 24)
+		if level == "":
+			(plate as Control).tooltip_text = ""
+			value.add_theme_color_override("font_color", UiKit.GOLD)
+			mark.visible = false
+			tag.visible = false
+			if nine != null:
+				nine.texture = UiKit.tex("hud_chip_normal.png")
+				nine.patch_margin_left = 10
+				nine.patch_margin_top = 10
+				nine.patch_margin_right = 10
+				nine.patch_margin_bottom = 10
+			continue
+		var red := level == "red"
+		(plate as Control).tooltip_text = Campaign.danger_line()
+		value.add_theme_color_override("font_color", Color("FF6A55") if red else Color("FFD24A"))
+		mark.texture = UiKit.tex("icon_warn_red_32.png" if red else "icon_warn_yellow_32.png")
+		mark.visible = true
+		tag.visible = true
+		tag_bg.texture = UiKit.tex("tag_warn_red.png" if red else "tag_warn_yellow.png")
+		tag_text.text = "危险" if red else "注意"
+		tag_text.add_theme_font_override("font", UiKit.sans_bold)
+		tag_text.add_theme_font_size_override("font_size", 13)
+		tag_text.add_theme_color_override("font_color", Color("FFF6E8") if red else Color("2A1A10"))
+		if nine != null:
+			nine.texture = UiKit.tex("hud_chip_warn_red.png" if red else "hud_chip_warn_yellow.png")
+			nine.patch_margin_left = 18
+			nine.patch_margin_top = 18
+			nine.patch_margin_right = 18
+			nine.patch_margin_bottom = 18
+
+
+func _paint_forecast() -> void:
+	if _forecast_bar == null or _forecast_bits == null:
+		return
+	var view: Dictionary = Campaign.forecast_view()
+	var ending := str(view.get("ending", "丙"))
+	var plate := "bing"
+	if ending == "甲":
+		plate = "jia"
+	elif ending == "乙":
+		plate = "yi"
+	elif ending == "丁":
+		plate = "ding"
+	_forecast_plate.texture = UiKit.tex("plate_end_%s.png" % plate)
+	_forecast_name.text = str(view.get("plate", ""))
+	var glow := ending == "丁"
+	_forecast_bar.texture = UiKit.tex("strip_forecast_danger.png" if glow else "strip_forecast_normal.png")
+	if glow:
+		_forecast_bar.patch_margin_left = 18
+		_forecast_bar.patch_margin_top = 18
+		_forecast_bar.patch_margin_right = 18
+		_forecast_bar.patch_margin_bottom = 18
+	else:
+		_forecast_bar.patch_margin_left = 10
+		_forecast_bar.patch_margin_top = 10
+		_forecast_bar.patch_margin_right = 10
+		_forecast_bar.patch_margin_bottom = 10
+	for child in _forecast_bits.get_children():
+		_forecast_bits.remove_child(child)
+		child.queue_free()
+	for bit in view.get("bits", []):
+		var piece := UiKit.label(str(bit["text"]), UiKit.sans, 15, Color(str(bit["color"])))
+		piece.autowrap_mode = TextServer.AUTOWRAP_OFF
+		piece.clip_text = false
+		piece.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+		_forecast_bits.add_child(piece)
+
+
+func _paint_banner() -> void:
+	if _turn_banner == null:
+		return
+	var show := Campaign.turn >= 6 and Campaign.turn < Baseline.PLAY_TURNS and not Campaign.settled and not Campaign.s3_done
+	_turn_banner.visible = show
+
+
+func _toggle_self() -> void:
+	AdvisorScript.set_self_pick(not AdvisorScript.self_pick())
+	_fill_advisor()
 
 
 func _hold_state() -> Dictionary:

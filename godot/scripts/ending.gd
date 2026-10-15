@@ -4,6 +4,7 @@ extends Control
 
 const Baseline := preload("res://data/campaign_baseline.gd")
 const UiKit := preload("res://scripts/ui_kit.gd")
+const AdvisorScript := preload("res://scripts/advisor.gd")
 
 var _scroll: TextureRect
 var _paper: Control
@@ -43,74 +44,42 @@ func _build() -> void:
 	_paper = Control.new()
 	_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_paper)
+	_paper.clip_contents = true
 	var column := VBoxContainer.new()
 	column.set_anchors_preset(Control.PRESET_FULL_RECT)
-	column.add_theme_constant_override("separation", 8)
+	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_paper.add_child(column)
 
-	var title := UiKit.label("结局 · %s" % Campaign.ending_title(), UiKit.serif, 40, UiKit.INK)
+	var title := UiKit.label("结局 · %s" % Campaign.ending_title(), UiKit.serif, 28, UiKit.INK)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-
-	var world := HBoxContainer.new()
-	world.add_theme_constant_override("separation", 8)
-	world.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_child(world)
-	world.add_child(UiKit.icon_rect("icon_worldline_64.png", 36))
-	world.add_child(UiKit.label("世界线偏移", UiKit.sans, 18, UiKit.INK))
-	var shift := UiKit.label(str(Campaign.worldline), UiKit.serif, 28, UiKit.CINNABAR)
-	world.add_child(shift)
-	_bar_track = UiKit.nine("bar_bg.png", 6, 0, 6, 0)
-	_bar_track.custom_minimum_size = Vector2(160, 14)
-	_bar_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_bar_track.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	world.add_child(_bar_track)
-	_bar_track.clip_contents = true
-	_bar_fill = UiKit.nine("bar_fill_cinnabar.png", 6, 0, 6, 0)
-	_bar_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bar_track.add_child(_bar_fill)
-	_bar_track.resized.connect(_fit_worldline)
-
-	var body := HBoxContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 18)
-	column.add_child(body)
-
-	var rewrite := VBoxContainer.new()
-	rewrite.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rewrite.add_theme_constant_override("separation", 6)
-	body.add_child(rewrite)
-	rewrite.add_child(UiKit.label("改写记", UiKit.serif, 22, UiKit.INK))
-	var rewrite_ink := Color("2a1a10")
-	for line in Campaign.rewrite_lines():
-		var bullet := UiKit.label("· " + line, UiKit.sans_bold, 18, rewrite_ink)
-		bullet.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		bullet.custom_minimum_size = Vector2(160, 0)
-		bullet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		rewrite.add_child(bullet)
-	var tag := PanelContainer.new()
-	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var plate := StyleBoxFlat.new()
-	plate.bg_color = Color("2a1a10")
-	plate.set_corner_radius_all(3)
-	plate.content_margin_left = 12
-	plate.content_margin_right = 12
-	plate.content_margin_top = 4
-	plate.content_margin_bottom = 4
-	tag.add_theme_stylebox_override("panel", plate)
-	var yuan := UiKit.label("袁崇焕  %s" % Campaign.yuan_status, UiKit.sans_bold, 16, UiKit.CREAM)
-	tag.add_child(yuan)
-	rewrite.add_child(tag)
+	var basis := UiKit.label("第 8 回合到了终局，天下按当时的局面结算。不是中途被判出局。", UiKit.sans, 15, Color("2a1a10"))
+	basis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	basis.autowrap_mode = TextServer.AUTOWRAP_OFF
+	basis.clip_text = false
+	column.add_child(basis)
+	var rewrite_line := "改写记：" + " ".join(Campaign.rewrite_lines())
+	var rewrite := UiKit.label(rewrite_line, UiKit.sans, 14, Color("2a1a10"))
+	rewrite.autowrap_mode = TextServer.AUTOWRAP_OFF
+	rewrite.clip_text = true
+	rewrite.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	column.add_child(rewrite)
+	var split := HBoxContainer.new()
+	split.add_theme_constant_override("separation", 16)
+	split.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	column.add_child(split)
+	split.add_child(_why_block())
 
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 8)
-	body.add_child(grid)
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_END
+	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	split.add_child(grid)
 	var tiles := [
-		["icon_turn_64.png", "回合", "%d / %d" % [Campaign.turn, Baseline.TURN_LIMIT]],
+		["icon_turn_64.png", "回合", "%d / %d" % [Campaign.turn, Baseline.PLAY_TURNS]],
 		["icon_silver_64.png", "银两", str(Campaign.silver)],
 		["icon_grain_64.png", "粮草", str(Campaign.grain)],
 		["icon_minxin_64.png", "民心", str(Campaign.morale)],
@@ -119,6 +88,10 @@ func _build() -> void:
 	]
 	for spec in tiles:
 		grid.add_child(_stat_tile(str(spec[0]), str(spec[1]), str(spec[2])))
+	var yuan := UiKit.label("袁崇焕 %s · 世界线 %d" % [Campaign.yuan_status, Campaign.worldline], UiKit.sans, 14, UiKit.INK)
+	var yuan_row := HBoxContainer.new()
+	yuan_row.add_child(yuan)
+	grid.add_child(yuan_row)
 
 	_buttons = HBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 16)
@@ -142,8 +115,16 @@ func _build() -> void:
 
 
 func _stat_tile(icon_name: String, caption: String, value: String) -> Control:
-	var plate := UiKit.nine("tile_stat.png", 6)
-	plate.custom_minimum_size = Vector2(196, 66)
+	var hit := false
+	var hits: Dictionary = Campaign.stat_hits()
+	if caption == "民心" and hits.has("morale"):
+		hit = true
+	elif caption == "银两" and hits.has("silver"):
+		hit = true
+	elif caption == "辽东稳固" and hits.has("liaodong"):
+		hit = true
+	var plate := UiKit.nine("tile_stat_hit.png" if hit else "tile_stat.png", 6)
+	plate.custom_minimum_size = Vector2(168, 52)
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 8
@@ -153,14 +134,83 @@ func _stat_tile(icon_name: String, caption: String, value: String) -> Control:
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(row)
-	row.add_child(UiKit.icon_rect(icon_name, 36))
+	row.add_child(UiKit.icon_rect(icon_name, 28))
 	var text := VBoxContainer.new()
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(text)
 	text.add_child(UiKit.label(caption, UiKit.sans, 14, UiKit.INK_SOFT))
-	text.add_child(UiKit.label(value, UiKit.serif, 22, UiKit.INK))
+	text.add_child(UiKit.label(value, UiKit.serif, 22, Color("8B1E1E") if hit else UiKit.INK))
+	if hit:
+		var badge := TextureRect.new()
+		badge.texture = UiKit.tex("tag_warn_red.png")
+		badge.custom_minimum_size = Vector2(64, 24)
+		badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		badge.stretch_mode = TextureRect.STRETCH_SCALE
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.position = Vector2(100, 2)
+		badge.size = Vector2(64, 24)
+		plate.add_child(badge)
+		var word := UiKit.label("危险", UiKit.sans_bold, 13, Color("FFF6E8"))
+		word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		word.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		word.set_anchors_preset(Control.PRESET_FULL_RECT)
+		badge.add_child(word)
+		plate.clip_contents = false
 	return plate
+
+
+func _why_block() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ending := Campaign.ending_id if Campaign.ending_id != "" else Campaign.resolve_ending()
+	box.add_child(UiKit.label("为什么是「%s」" % ending, UiKit.serif, 18, UiKit.INK))
+	var best := Campaign.outlook_before_finale
+	if best == "":
+		best = AdvisorScript.best_ending(Campaign)
+	box.add_child(UiKit.label("当前最好结局：%s" % best, UiKit.sans_bold, 15, Color("D4A84B")))
+	for row in Campaign.settlement_checks():
+		if str(row.get("kind", "")) == "note":
+			box.add_child(UiKit.label(str(row.get("text", "")), UiKit.sans, 14, UiKit.INK_SOFT))
+			continue
+		box.add_child(_rule_row(row))
+	var gaps := Campaign.upgrade_gaps()
+	if not gaps.is_empty():
+		box.add_child(UiKit.label("若要更高", UiKit.serif, 16, UiKit.INK))
+		for gap in gaps:
+			box.add_child(UiKit.label(gap, UiKit.sans, 13, Color("8B1E1E")))
+	return box
+
+
+func _rule_row(row: Dictionary) -> Control:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var text := UiKit.label(str(row.get("text", "")), UiKit.sans, 15, Color("2A1A10"))
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(text)
+	var met := bool(row.get("met", false))
+	var icon := UiKit.icon_rect("icon_check_32.png" if met else "icon_cross_32.png", 28)
+	line.add_child(icon)
+	var tag := TextureRect.new()
+	tag.texture = UiKit.tex("tag_rule_met.png" if met else "tag_rule_unmet.png")
+	tag.custom_minimum_size = Vector2(128, 28)
+	tag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tag.stretch_mode = TextureRect.STRETCH_SCALE
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.add_child(tag)
+	var value := int(row.get("value", -1))
+	var caption := "已满足" if met else "未满足"
+	if value >= 0:
+		caption += " · %d" % value
+	var label := UiKit.label(caption, UiKit.sans_bold, 13, Color("FFF6E8"))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tag.add_child(label)
+	return line
 
 
 func _layout() -> void:
@@ -172,8 +222,8 @@ func _layout() -> void:
 	var scroll_size := Vector2(1144, 682) * scale
 	_scroll.position = Vector2((size.x - scroll_size.x) * 0.5, 4)
 	_scroll.size = scroll_size
-	_paper.position = _scroll.position + scroll_size * Vector2(0.055, 0.12)
-	_paper.size = scroll_size * Vector2(0.89, 0.54)
+	_paper.position = _scroll.position + scroll_size * Vector2(0.08, 0.18)
+	_paper.size = scroll_size * Vector2(0.84, 0.58)
 	var buttons_size := _buttons.get_combined_minimum_size()
 	_buttons.position = Vector2((size.x - buttons_size.x) * 0.5, size.y - 68)
 	_buttons.size = buttons_size

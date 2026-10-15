@@ -2,6 +2,7 @@ extends Node3D
 ## S1 登基夜。低模夜殿，镜头推近之后才放出 A/B/C。写回规则仍在 Campaign.apply_s1。
 
 const Kit := preload("res://scripts/story_kit.gd")
+const StoryBoard := preload("res://scripts/story_board.gd")
 const _PUSH_SEC := 2.15
 const _CAM_START := Vector3(0, 6.4, 12.2)
 const _CAM_END := Vector3(0, 2.85, 3.15)
@@ -68,11 +69,24 @@ func _aim() -> void:
 
 
 func _reveal_choices() -> void:
-	_sub.text = "选定后立刻写回局面，回到大地图。"
-	_choices.visible = true
-	_choices.modulate.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(_choices, "modulate:a", 1.0, 0.4)
+	_choices.visible = false
+	var layout := get_node_or_null("UI/Layout") as CanvasItem
+	if layout != null:
+		layout.visible = false
+	if $UI.get_node_or_null("StoryBoard") != null:
+		return
+	StoryBoard.mount($UI, {
+		"which": "s1",
+		"kicker": "剧情 1/3",
+		"title": "登基夜",
+		"sub": "先看清朝局，再定这一夜怎么走。",
+		"on_choose": _choose,
+		"choices": [
+			{"id": "A", "title": "先稳朝堂", "parts": [{"text": "银两 +5", "kind": "gain"}, {"text": "世界线 +5", "kind": "world"}]},
+			{"id": "B", "title": "先重辽东", "parts": [{"text": "辽东 +8", "kind": "gain"}, {"text": "银两 -5", "kind": "cost"}, {"text": "结交袁", "kind": "status"}, {"text": "世界线 +10", "kind": "world"}]},
+			{"id": "C", "title": "先安民", "parts": [{"text": "民心 +10", "kind": "gain"}, {"text": "粮草 -5", "kind": "cost"}, {"text": "世界线 +5", "kind": "world"}]},
+		],
+	})
 
 
 func _choose(choice_id: String) -> void:
