@@ -11,4 +11,9 @@
 *.md text eol=lf
 *.ogg binary
 *.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.woff2 binary
 *.mp3 binary
