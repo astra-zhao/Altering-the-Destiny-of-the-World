@@ -8,6 +8,8 @@ var master_linear := 0.8
 
 var _players: Dictionary = {}
 var _fade: Tween
+var _released := false
+var _quit_scheduled := false
 
 const _ACTIVE_DB := -4.0
 const _IDLE_DB := -80.0
@@ -68,18 +70,33 @@ func toggle_muted() -> bool:
 	return muted
 
 
-func _exit_tree() -> void:
-	_release_players()
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_WM_CLOSE_REQUEST:
+		return
+	# 通知先于 close_requested。先关掉自动退出，等音频线程把 Stream 淡出删掉再 quit，
+	# 否则退出时会漏掉 WAV 和 playback。
+	var tree := get_tree()
+	if tree != null:
+		tree.auto_accept_quit = false
+	_schedule_quit()
 
 
-func _keep_playing() -> void:
-	for key in _players:
-		var player := _players[key] as AudioStreamPlayer
-		if player != null and not player.playing:
-			player.play()
+func _schedule_quit() -> void:
+	if _quit_scheduled:
+		return
+	_quit_scheduled = true
+	release_playback()
+	var timer := get_tree().create_timer(0.35)
+	timer.timeout.connect(func() -> void:
+		if is_inside_tree():
+			get_tree().quit()
+	)
 
 
-func _release_players() -> void:
+func release_playback() -> void:
+	if _released:
+		return
+	_released = true
 	if _fade != null and _fade.is_valid():
 		_fade.kill()
 		_fade = null
@@ -88,6 +105,18 @@ func _release_players() -> void:
 		if player == null:
 			continue
 		player.stop()
+		player.stream = null
+
+
+func _exit_tree() -> void:
+	release_playback()
+
+
+func _keep_playing() -> void:
+	for key in _players:
+		var player := _players[key] as AudioStreamPlayer
+		if player != null and not player.playing:
+			player.play()
 
 
 func _ensure_bus() -> void:

@@ -14,7 +14,7 @@ func _run() -> void:
 	var bgm := root.get_node_or_null("Bgm")
 	if bgm == null:
 		_fail("autoload Bgm 不在场景树上")
-		_finish()
+		await _finish()
 		return
 	print("BGM_CHECK driver=%s" % AudioServer.get_driver_name())
 	_check_master(bgm)
@@ -27,7 +27,7 @@ func _run() -> void:
 	await _visit("结算", "res://scenes/ending.tscn", "ending", bgm)
 	await _visit("回到地图", "res://scenes/big_map.tscn", "map", bgm)
 	_check_mute(bgm)
-	_finish()
+	await _finish()
 
 
 func _visit(label: String, path: String, kind: String, bgm: Node) -> void:
@@ -135,6 +135,10 @@ func _fail(message: String) -> void:
 
 
 func _finish() -> void:
+	var bgm := root.get_node_or_null("Bgm")
+	if bgm != null and bgm.has_method("release_playback"):
+		bgm.release_playback()
+		await _wait_sec(0.45)
 	if _failures.is_empty():
 		print("BGM_CHECK_OK")
 		quit(0)
