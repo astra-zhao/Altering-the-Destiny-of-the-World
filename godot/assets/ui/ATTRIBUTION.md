@@ -15,7 +15,7 @@
 | NotoSerifSC-Bold.otf / .woff2 | Noto Serif CJK SC Bold（与思源宋体同源设计） | SIL OFL 1.1，见 OFL.txt |
 | NotoSansSC-Regular.otf / .woff2 | Noto Sans CJK SC Regular（与思源黑体同源设计） | 同上 |
 | NotoSansSC-Bold.otf / .woff2 | Noto Sans CJK SC Bold | 同上 |
-- 已按 charset_used.txt（540 字，取自项目 godot 目录与 v1.2 页面中出现的字符）做子集。游戏里出现新汉字时，用同一命令重新生成：`pyftsubset <原字体> --text-file=charset_used.txt --layout-features='kern,liga,locl' --output-file=<out>`。
+- 当前 otf / woff2 是 910 字子集，覆盖原先界面用字，并补了缺字以及 →、≥、≤ 和全角空格。`charset_used.txt` 仍是早期 540 字清单，不是这版子集的完整字表。
 - 子集化属于 OFL 允许的修改版；因本包不使用保留字体名 "Source"，文件名用 Noto。
 
 ## 三、配乐

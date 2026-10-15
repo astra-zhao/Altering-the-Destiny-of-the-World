@@ -174,17 +174,8 @@ static func paint_seal(button: TextureButton, prefix: String, picked: bool, hove
 
 static func _load_font(file_name: String) -> Font:
 	var loaded: Variant = load(DIR + file_name)
-	var font := loaded as Font
+	var font := loaded as FontFile
 	if font == null:
-		return load("res://theme/WenQuanYiMicroHei.ttf") as Font
-	var wen := load("res://theme/WenQuanYiMicroHei.ttf") as Font
-	if wen != null and font is FontFile:
-		var file := font as FontFile
-		var seen := false
-		for item in file.fallbacks:
-			if item == wen:
-				seen = true
-				break
-		if not seen:
-			file.fallbacks.append(wen)
+		return null
+	font.allow_system_fallback = false
 	return font

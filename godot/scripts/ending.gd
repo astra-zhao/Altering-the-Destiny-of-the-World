@@ -183,7 +183,7 @@ func _layout() -> void:
 func _fit_worldline() -> void:
 	if _bar_track == null or _bar_fill == null:
 		return
-	var ratio := clampf(float(Campaign.worldline) / 40.0, 0.0, 1.0)
+	var ratio := clampf(float(Campaign.worldline) / 100.0, 0.0, 1.0)
 	var width := _bar_track.size.x
 	if width < 8.0:
 		width = _bar_track.custom_minimum_size.x

@@ -278,16 +278,23 @@ func _test_guide(campaign: Node) -> void:
 	if not bool(saved.get("ok", false)):
 		_fail("引导中存档失败")
 		return
-	campaign.guide_skip()
-	if not bool(campaign.guide_done):
-		_fail("跳过没有关掉引导")
+	campaign.guide_step = 0
+	campaign.guide_done = false
 	var loaded: Dictionary = campaign.load_game()
 	if not bool(loaded.get("ok", false)):
 		_fail("引导读档失败")
 		return
 	if int(campaign.guide_step) != 1 or bool(campaign.guide_done):
-		_fail("读档没有回到引导第 2 步")
+		_fail("教程中途的存档应回到选城之后")
 	campaign.guide_skip()
+	if not bool(campaign.guide_done):
+		_fail("跳过没有关掉引导")
+	loaded = campaign.load_game()
+	if not bool(loaded.get("ok", false)):
+		_fail("跳过后读档失败")
+		return
+	if not bool(campaign.guide_done) or int(campaign.guide_step) < 3:
+		_fail("跳过引导后读档，引导不应再出现")
 	campaign.reset()
 	if not bool(campaign.guide_done):
 		_fail("跳过后再开局仍弹引导")

@@ -82,6 +82,8 @@ var _battle_skip: Button
 var _battle_close: Button
 var _battle_src := ""
 var _battle_dst := ""
+var _battle_top: HBoxContainer
+var _battle_chips: Dictionary = {}
 var _battle_done := false
 var _battle_tween: Tween
 var _credits: Control
@@ -151,6 +153,7 @@ func _build_top() -> void:
 	add_child(_top)
 	_chip_row = HBoxContainer.new()
 	_chip_row.add_theme_constant_override("separation", 4)
+	_chip_row.clip_contents = true
 	_chip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top.add_child(_chip_row)
 	for spec in [
@@ -161,7 +164,7 @@ func _build_top() -> void:
 		["pressure", "icon_pressure_64.png", "后金压力"],
 		["turn", "icon_turn_64.png", "回合"],
 	]:
-		_chips[str(spec[0])] = _add_chip(str(spec[1]), str(spec[2]))
+		_chips[str(spec[0])] = _add_chip(_chip_row, str(spec[1]), str(spec[2]))
 	_tool_row = HBoxContainer.new()
 	_tool_row.add_theme_constant_override("separation", 2)
 	_tool_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -194,34 +197,35 @@ func _compact_link(text: String, handler: Callable) -> Button:
 	empty.content_margin_bottom = 2
 	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 		button.add_theme_stylebox_override(state, empty)
+	button.custom_minimum_size = Vector2(float(text.length()) * 15.0 + 8.0, 28)
 	button.pressed.connect(handler)
 	return button
 
 
-func _add_chip(icon_name: String, caption: String) -> Label:
+func _add_chip(parent: Node, icon_name: String, caption: String) -> Label:
 	var plate := UiKit.nine("hud_chip_normal.png", 10)
-	plate.custom_minimum_size = Vector2(158, 46)
+	plate.custom_minimum_size = Vector2(158, 50)
 	plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_chip_row.add_child(plate)
+	parent.add_child(plate)
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 6
-	row.offset_top = 3
-	row.offset_right = -6
-	row.offset_bottom = -3
+	row.offset_left = 10
+	row.offset_top = 10
+	row.offset_right = -10
+	row.offset_bottom = -10
 	row.add_theme_constant_override("separation", 4)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(row)
-	row.add_child(UiKit.icon_rect(icon_name, 40))
+	row.add_child(UiKit.icon_rect(icon_name, 28))
 	var name := UiKit.label(caption, UiKit.sans, 13, UiKit.CREAM)
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name.clip_text = true
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(name)
-	var value := UiKit.label("0", UiKit.serif, 18, UiKit.GOLD)
+	var value := UiKit.label("0", UiKit.serif, 16, UiKit.GOLD)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	value.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -339,7 +343,11 @@ func _make_card(kind: String, title: String, parts: Array) -> Control:
 	for part in parts:
 		deltas.add_child(UiKit.label(str(part["text"]), UiKit.sans, 15, part["color"]))
 	var reason := UiKit.label("", UiKit.sans, 14, UiKit.WARN)
-	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reason.autowrap_mode = TextServer.AUTOWRAP_OFF
+	reason.clip_text = true
+	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reason.custom_minimum_size = Vector2(40, 18)
+	button.clip_contents = true
 	text.add_child(reason)
 	_cards[kind] = {"button": button, "reason": reason, "title": name}
 	return button
@@ -473,7 +481,6 @@ func _build_advisor() -> void:
 	_advisor_list = VBoxContainer.new()
 	_advisor_list.add_theme_constant_override("separation", 2)
 	column.add_child(_advisor_list)
-	_advisor_panel.hide()
 
 
 func _build_guide() -> void:
@@ -540,24 +547,30 @@ func _layout_chrome() -> void:
 	if _top == null or size.x < 80.0:
 		return
 	_top.position = Vector2(8, 8)
-	_top.size = Vector2(size.x - 16, 50)
+	_top.size = Vector2(size.x - 16, 54)
+	if _mute_button != null:
+		_mute_button.custom_minimum_size.x = float(_mute_button.text.length()) * 15.0 + 8.0
 	var tools := _tool_row.get_combined_minimum_size()
 	_tool_row.position = Vector2(_top.size.x - tools.x, 2)
-	_tool_row.size = Vector2(tools.x, 46)
+	_tool_row.size = Vector2(tools.x, 50)
 	var chip_span := maxf(0.0, _tool_row.position.x - 6.0)
 	_chip_row.position = Vector2(0, 2)
-	_chip_row.size = Vector2(chip_span, 46)
+	_chip_row.size = Vector2(chip_span, 50)
+	_fit_chips()
 	var hint_w := minf(560.0, size.x - 320.0)
 	_hint_row.position = Vector2(8, 62)
 	_hint_row.size = Vector2(hint_w, 68)
 	_side.position = Vector2(size.x - 284, 62)
-	var side_min := _side.get_combined_minimum_size()
-	var side_limit := size.y - 248.0
-	_side.size = Vector2(272, minf(maxf(side_min.y, 280.0), maxf(200.0, side_limit - _side.position.y)))
-	_end_button.position = Vector2(size.x - 200, size.y - 196)
-	_end_button.size = Vector2(188, 188)
-	_end_reason.position = Vector2(size.x - 204, _end_button.position.y - 50)
-	_end_reason.size = Vector2(188, 48)
+	_side.clip_contents = true
+	var seal := 188.0
+	if size.y < 700.0:
+		seal = 144.0
+	_end_button.position = Vector2(size.x - seal - 16.0, size.y - 8.0 - seal)
+	_end_button.size = Vector2(seal, seal)
+	_end_reason.custom_minimum_size = Vector2(maxf(seal, 168.0), 22.0)
+	_end_reason.position = Vector2(_end_button.position.x, _end_button.position.y - 26.0)
+	_end_reason.size = _end_reason.custom_minimum_size
+	_fit_side()
 	_layout_advisor()
 	_position_markers()
 	_layout_battle()
@@ -620,6 +633,9 @@ func _refresh() -> void:
 	if Campaign.settled:
 		turn_text += " 完"
 	_chips["turn"].text = turn_text
+	for key in _battle_chips:
+		if _chips.has(key):
+			(_battle_chips[key] as Label).text = (_chips[key] as Label).text
 	_yuan_line.text = "袁崇焕 %s" % Campaign.yuan_status
 	_log.text = Campaign.log_text
 	var hint := _next_hint()
@@ -788,23 +804,162 @@ func _refresh_guide() -> void:
 	var rect := Rect2()
 	if _guide_target != null and is_instance_valid(_guide_target) and _guide_target.is_visible_in_tree():
 		rect = _guide_target.get_global_rect()
-	var panel := Vector2(300, 84)
-	var origin := Vector2.ZERO
-	if _actions != null and _actions.visible and Campaign.guide_step >= 1:
-		origin = Vector2(488, size.y - 96)
-	else:
-		origin = _clear_of(rect.position + Vector2(rect.size.x + 12, 8), panel, _guide_spots(rect, panel), false)
-	if _advisor_panel != null and _advisor_panel.visible:
-		var adv := _advisor_panel.get_global_rect()
-		var guide_rect := Rect2(origin, panel)
-		if guide_rect.intersects(adv):
-			origin.x = adv.end.x + 8.0
-			if origin.x + panel.x > size.x - 8.0:
-				origin = Vector2(maxf(8.0, adv.position.x), maxf(140.0, adv.position.y - panel.y - 8.0))
+	var panel_w := _guide_width()
+	var text_w := maxf(148.0, panel_w - 28.0)
+	_guide_text.custom_minimum_size = Vector2(text_w, 0)
+	var text_h := 44.0
+	var font := _guide_text.get_theme_font("font")
+	if font != null:
+		var font_size := _guide_text.get_theme_font_size("font_size")
+		text_h = font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, text_w, font_size).y
+	# 正文高度 + 「跳过引导」一行 + 面板内边距，按钮落在框内。
+	var panel := Vector2(panel_w, maxf(112.0, text_h + 64.0))
+	var origin := _place_guide(panel, rect)
 	_guide_bubble.position = rect.position + Vector2(-4, -10) - _guide.global_position
 	_guide_bubble.size = Vector2(32, 32)
 	_guide_panel.position = origin - _guide.global_position
 	_guide_panel.size = panel
+
+
+func _fit_chips() -> void:
+	var count := _chip_row.get_child_count()
+	if count <= 0:
+		return
+	var sep := float(_chip_row.get_theme_constant("separation"))
+	var span := _tool_row.position.x - _chip_row.position.x - 6.0
+	if span < 80.0:
+		return
+	_chip_row.size.x = span
+	var each := (span - sep * float(count - 1)) / float(count)
+	var tight := each < 150.0
+	each = clampf(each, 92.0, 168.0)
+	for child in _chip_row.get_children():
+		var plate := child as Control
+		plate.clip_contents = true
+		if plate.get_child_count() == 0:
+			continue
+		var row := plate.get_child(0) as Control
+		row.offset_left = 6.0 if tight else 10.0
+		row.offset_right = -6.0 if tight else -10.0
+		if row.get_child_count() < 3:
+			plate.custom_minimum_size = Vector2(each, 50)
+			continue
+		var icon := row.get_child(0) as Control
+		icon.custom_minimum_size = Vector2(22, 22) if tight else Vector2(28, 28)
+		var caption := row.get_child(1) as Label
+		var value := row.get_child(2) as Label
+		if caption != null:
+			caption.visible = true
+			caption.add_theme_font_size_override("font_size", 12 if tight else 13)
+		if value != null:
+			value.add_theme_font_size_override("font_size", 14 if tight else 16)
+		plate.custom_minimum_size = Vector2(each, 50)
+		if tight and plate.get_combined_minimum_size().x > each + 1.0 and caption != null:
+			caption.visible = false
+			plate.custom_minimum_size = Vector2(minf(each, 112.0), 50)
+	_chip_row.size = Vector2(span, 50)
+
+
+func _fit_side() -> void:
+	var limit_bottom := _end_reason.position.y - 8.0
+	var avail := maxf(140.0, limit_bottom - _side.position.y)
+	var height := 108.0
+	var wanted := 0.0
+	while height >= 80.0:
+		for kind in _cards:
+			var button: Control = _cards[kind]["button"]
+			button.custom_minimum_size.y = height
+			button.clip_contents = height >= 108.0
+			var row := button.get_child(0) as Control
+			if row != null:
+				var pad := 12.0 if height >= 108.0 else 2.0
+				row.offset_top = pad
+				row.offset_bottom = -pad
+		wanted = _side.get_combined_minimum_size().y
+		if wanted <= avail + 0.5:
+			break
+		height -= 4.0
+	_side.size = Vector2(272, minf(wanted, avail))
+
+
+func _place_guide(panel: Vector2, target: Rect2) -> Vector2:
+	var candidates: Array[Vector2] = []
+	var adv := Rect2()
+	var adv_on := _advisor_panel != null and _advisor_panel.visible
+	if adv_on:
+		adv = _advisor_panel.get_global_rect()
+		var slot_y := size.y - panel.y - 12.0
+		var guard := 0
+		while slot_y >= 136.0 and guard < 28:
+			candidates.append(Vector2(adv.end.x + 12.0, slot_y))
+			slot_y -= 16.0
+			guard += 1
+		candidates.append(Vector2(adv.position.x, adv.position.y - panel.y - 10.0))
+	if target.size != Vector2.ZERO:
+		candidates.append(target.position + Vector2(target.size.x + 12.0, 8.0))
+		candidates.append(Vector2(target.position.x, target.position.y - panel.y - 12.0))
+	candidates.append(Vector2((size.x - panel.x) * 0.5, 140.0))
+	candidates.append(Vector2(16.0, 140.0))
+	var obstacles: Array[Rect2] = []
+	if adv_on:
+		obstacles.append(adv.grow(6.0))
+	if _side != null:
+		obstacles.append(Rect2(_side.position, _side.size).grow(4.0))
+	if _end_button != null:
+		obstacles.append(_end_button.get_global_rect().grow(6.0))
+	if _end_reason != null and _end_reason.visible:
+		obstacles.append(_end_reason.get_global_rect().grow(4.0))
+	if _hint_row != null:
+		obstacles.append(_hint_row.get_global_rect())
+	obstacles.append(Rect2(0, 0, size.x, 128))
+	for city_id in _markers:
+		var token: Control = _markers[city_id]
+		obstacles.append(token.get_global_rect().grow(4.0))
+	if _actions != null and _actions.visible:
+		obstacles.append(_actions.get_global_rect().grow(4.0))
+	var fallback := Vector2(16.0, 140.0)
+	var fallback_hit := INF
+	for origin in candidates:
+		var clamped := Vector2(
+			clampf(origin.x, 8.0, maxf(8.0, size.x - panel.x - 8.0)),
+			clampf(origin.y, 132.0, maxf(132.0, size.y - panel.y - 8.0))
+		)
+		var rect := Rect2(clamped, panel)
+		var hit := 0.0
+		for obs in obstacles:
+			if rect.intersects(obs):
+				var overlap := rect.intersection(obs)
+				hit += overlap.size.x * overlap.size.y
+		if hit <= 0.0:
+			return clamped
+		if hit < fallback_hit:
+			fallback_hit = hit
+			fallback = clamped
+	return fallback
+
+
+func _guide_home() -> Rect2:
+	var panel_w := _guide_width()
+	var left := 16.0
+	if _advisor_panel != null and _advisor_panel.visible:
+		left = _advisor_panel.position.x + _advisor_panel.size.x + 12.0
+	var panel_h := 120.0
+	return Rect2(left, size.y - panel_h - 12.0, panel_w, panel_h)
+
+
+func _guide_width() -> float:
+	var right := size.x - 16.0
+	if _side != null:
+		right = _side.position.x - 8.0
+	var left := 16.0
+	if _advisor_panel != null and _advisor_panel.visible:
+		left = _advisor_panel.position.x + _advisor_panel.size.x + 12.0
+	var gap := right - left
+	if gap >= 340.0:
+		return 340.0
+	if gap >= 200.0:
+		return gap
+	return maxf(160.0, gap)
 
 
 func _action_spots(center: Vector2, block: Vector2) -> Array:
@@ -842,6 +997,10 @@ func _clear_of(preferred: Vector2, block: Vector2, spots: Array, for_actions: bo
 		obstacles.append(_end_button.get_global_rect().grow(6))
 	if _advisor_panel != null and _advisor_panel.visible:
 		obstacles.append(_advisor_panel.get_global_rect())
+	if for_actions and not Campaign.guide_done and not _in_battle:
+		var reserve := _guide_home()
+		if reserve.size.x > 8.0:
+			obstacles.append(reserve.grow(8.0))
 	if _hint_row != null:
 		obstacles.append(_hint_row.get_global_rect())
 	for city_id in _markers:
@@ -1356,6 +1515,20 @@ func _build_battle() -> void:
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle.add_child(bg)
+	_battle_top = HBoxContainer.new()
+	_battle_top.add_theme_constant_override("separation", 4)
+	_battle_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_battle_top.z_index = 2
+	_battle.add_child(_battle_top)
+	for spec in [
+		["silver", "icon_silver_64.png", "银两"],
+		["grain", "icon_grain_64.png", "粮草"],
+		["morale", "icon_minxin_64.png", "民心"],
+		["liaodong", "icon_liaodong_64.png", "辽东稳固"],
+		["pressure", "icon_pressure_64.png", "后金压力"],
+		["turn", "icon_turn_64.png", "回合"],
+	]:
+		_battle_chips[str(spec[0])] = _add_chip(_battle_top, str(spec[1]), str(spec[2]))
 	_battle_frame = UiKit.nine("panel_frame_l.png", 26)
 	_battle_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_battle.add_child(_battle_frame)
@@ -1410,19 +1583,21 @@ func _battle_column(attacker: bool) -> Control:
 	box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	box.add_theme_constant_override("separation", 2)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name := UiKit.label("", UiKit.serif, 28, UiKit.GOLD)
+	var name := UiKit.label("", UiKit.serif, 30, UiKit.GOLD)
 	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name.custom_minimum_size = Vector2(160, 36)
+	name.custom_minimum_size = Vector2(160, 40)
 	box.add_child(name)
-	var role := UiKit.label("", UiKit.sans, 16, UiKit.CREAM)
+	var role := UiKit.label("", UiKit.sans, 18, UiKit.CREAM)
 	role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	role.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	role.custom_minimum_size = Vector2(160, 22)
+	role.custom_minimum_size = Vector2(160, 24)
 	box.add_child(role)
-	# 切图有效圆 84/104。放到 164，画面上的城印直径约 132。
+	# 切图有效圆 84/104。控件 164 时，可见圆盘约 132。
 	var holder_wrap := CenterContainer.new()
 	holder_wrap.custom_minimum_size = Vector2(164, 164)
+	holder_wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	holder_wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	holder_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(holder_wrap)
 	var holder := Control.new()
@@ -1443,20 +1618,20 @@ func _battle_column(attacker: bool) -> Control:
 	num.size = Vector2(132, 56)
 	UiKit.outline(num, 4)
 	holder.add_child(num)
-	var extra := UiKit.label("", UiKit.sans, 15, UiKit.CREAM)
+	var extra := UiKit.label("", UiKit.sans, 18, UiKit.CREAM)
 	extra.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	extra.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	extra.custom_minimum_size = Vector2(140, 22)
+	extra.custom_minimum_size = Vector2(140, 26)
 	box.add_child(extra)
-	var mod := UiKit.label("", UiKit.sans, 16, UiKit.GOLD)
+	var mod := UiKit.label("", UiKit.sans, 18, UiKit.GOLD)
 	mod.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mod.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	mod.custom_minimum_size = Vector2(160, 22)
+	mod.custom_minimum_size = Vector2(160, 26)
 	box.add_child(mod)
-	var power := UiKit.label("", UiKit.serif, 18, UiKit.CREAM)
+	var power := UiKit.label("", UiKit.serif, 22, UiKit.CREAM)
 	power.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	power.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	power.custom_minimum_size = Vector2(160, 24)
+	power.custom_minimum_size = Vector2(160, 28)
 	box.add_child(power)
 	if attacker:
 		_atk_name = name
@@ -1485,7 +1660,7 @@ func _battle_center() -> Control:
 	box.add_theme_constant_override("separation", 6)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 60)
+	spacer.custom_minimum_size = Vector2(0, 66)
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(spacer)
 	var stage := CenterContainer.new()
@@ -1515,7 +1690,7 @@ func _battle_center() -> Control:
 	_battle_fill.offset_bottom = -1
 	_battle_fill.anchor_right = 0.05
 	_battle_track.add_child(_battle_fill)
-	var fighting := UiKit.label("交战中……", UiKit.sans, 16, UiKit.CREAM)
+	var fighting := UiKit.label("交战中……", UiKit.sans, 18, UiKit.CREAM)
 	fighting.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_progress_box.add_child(fighting)
 	return box
@@ -1524,8 +1699,12 @@ func _battle_center() -> Control:
 func _layout_battle() -> void:
 	if _battle_frame == null or not _battle.visible:
 		return
-	var frame := Vector2(minf(1040, size.x - 48), minf(560, size.y - 36))
-	var origin := (size - frame) * 0.5
+	if _battle_top != null:
+		_battle_top.position = Vector2(8, 8)
+		_battle_top.size = Vector2(maxf(200.0, size.x - 16.0), 50)
+	var top_reserve := 64.0
+	var frame := Vector2(minf(1040, size.x - 48), minf(520, size.y - top_reserve - 12))
+	var origin := Vector2((size.x - frame.x) * 0.5, top_reserve)
 	_battle_frame.position = origin
 	_battle_frame.size = frame
 	_battle_title_plate.position = origin + Vector2(frame.x * 0.5 - 90, -18)
@@ -1579,7 +1758,7 @@ func _build_credits() -> void:
 	var body := UiKit.label("", UiKit.sans, 16, UiKit.CREAM)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.text = "音乐（页面标明 CC0）\n地图 Lotus Pond — BiteMe Games\n简战 Dragon Dance — BiteMe Games\n剧情 Orien — Tozan（OpenGameArt）\n结局 Floating Lanterns — John Bartmann（Free Music Archive）\n\n字体：Noto Serif / Sans CJK SC（SIL OFL 1.1）。缺字回退文泉驿微米黑（Apache-2.0）。\n美术：AI 辅助生成（Grok Bot，2026-10-15），后期由 Alice 处理。"
+	body.text = "音乐（页面标明 CC0）\n地图 Lotus Pond — BiteMe Games\n简战 Dragon Dance — BiteMe Games\n剧情 Orien — Tozan（OpenGameArt）\n结局 Floating Lanterns — John Bartmann（Free Music Archive）\n\n字体：Noto Serif / Sans CJK SC（SIL OFL 1.1）。\n美术：AI 辅助生成（Grok Bot，2026-10-15），后期由 Alice 处理。"
 	box.add_child(body)
 	var close := UiKit.painted_button("关闭", false, 160)
 	close.pressed.connect(func() -> void: _credits.hide())

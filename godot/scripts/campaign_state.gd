@@ -583,6 +583,10 @@ func apply_snapshot(data: Dictionary) -> bool:
 	log_text = str(data["log_text"])
 	guide_done = next_guide_done
 	guide_step = next_guide_step
+	# 磁盘标记表示已经跳过或走完。中途存档不能把引导再叫出来。坏标记仍当作没跳过。
+	if guide_disk_dismissed():
+		guide_done = true
+		guide_step = 3
 	for id in parsed:
 		var info: Dictionary = cities[id]
 		info["faction"] = str(parsed[id]["faction"])
@@ -614,9 +618,11 @@ func guide_note_city() -> void:
 
 
 func guide_note_action() -> void:
-	if guide_done or guide_step != 1:
+	if guide_done:
 		return
-	guide_step = 2
+	# 帮我选直接固守、行军或攻城时，没点过城也算完成选城和选行动。
+	if guide_step < 2:
+		guide_step = 2
 
 
 func guide_note_end() -> void:

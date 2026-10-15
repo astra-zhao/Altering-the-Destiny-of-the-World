@@ -14,7 +14,7 @@
 
 第一次会生成 `godot/.godot/`，已写入仓库 `.gitignore`。
 
-界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，SIL OFL 1.1，见同目录 `OFL.txt`）。缺字回退文泉驿微米黑（`theme/WenQuanYiMicroHei.ttf`，Apache-2.0）。主题文件 `theme/main_theme.tres` 仍指向文泉驿，大地图和结局在代码里改用 Noto。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
+界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，910 字子集，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
 
 ## 怎么玩
 
@@ -34,9 +34,9 @@
 
 ### 第一次的引导
 
-编号气泡按顺序指三处，旁边一句人话：先点亮着的城，再选一个行动，最后点「下一回合」。点「跳过引导」，或三步都走完，这一局不再出现。同时会在本机写下 `user://v03_guide.json`（`{"dismissed": true}`）。以后开新局也不再出现。
+编号气泡按顺序指三处，旁边一句人话：先点亮着的城，再选一个行动，最后点「下一回合」。点「跳过引导」，或三步都走完，这一局不再出现。同时会在本机写下 `user://v03_guide.json`（`{"dismissed": true}`）。以后开新局也不再出现。没点过城，直接在「帮我选」里固守、行军或攻城，也算走完前两步，气泡进到「下一回合」。
 
-读档以存档里的引导进度为准。新局才看磁盘上的这个标记。磁盘文件坏了（不是合法 JSON），当作第一次，重新出现引导。
+读档先按存档里的引导进度恢复。磁盘标记若是合法的 `{"dismissed": true}`，这次读档不会把已经跳过或走完的引导再叫出来。标记不在，或文件坏了（不是合法 JSON），就不当作已跳过：新局重新出现引导，中途存档仍回到当时那一步。
 
 ## 验收
 
@@ -208,6 +208,6 @@ cd godot
 | `scripts/advisor_smoke.gd` | 只点第一条推荐，直到结局甲 |
 | `scripts/big_map.gd` | 大地图、引导、内政卡、简战浮层 |
 | `scripts/campaign_state.gd` | 回合、简战、S1–S3 写回、结局、存档 |
-| `theme/WenQuanYiMicroHei.ttf` | 界面字体，Apache-2.0 |
+| `assets/ui/NotoSansSC-Regular.otf` 等 | 界面字体 910 字子集，SIL OFL 1.1，许可见 `assets/ui/OFL.txt` |
 | `export_presets.cfg` | macOS universal 导出预设 |
 | `data/campaign_baseline.gd` | 六城、邻接、初值、消耗 |

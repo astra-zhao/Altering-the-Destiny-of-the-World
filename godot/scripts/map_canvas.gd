@@ -40,11 +40,39 @@ func _draw() -> void:
 
 func _draw_route_label(a: Vector2, b: Vector2, text: String) -> void:
 	var delta := b - a
-	if delta.length() < 8.0:
+	var length := delta.length()
+	if length < 8.0:
 		return
-	var mid := (a + b) * 0.5
-	var normal := Vector2(-delta.y, delta.x).normalized()
-	_draw_caption(mid + normal * 14.0 + Vector2(-18, -8), text, 15, UiKit.GOLD)
+	var dir := delta / length
+	var normal := Vector2(-dir.y, dir.x)
+	var font := UiKit.sans if UiKit.sans != null else ThemeDB.fallback_font
+	var font_size := 16
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var best := (a + b) * 0.5
+	var best_score := -100000.0
+	# 中点落在京师上。改到两段空隙里，并躲开顶栏和城印。
+	for along_v in [0.30, 0.40, 0.60, 0.70]:
+		var mid: Vector2 = a.lerp(b, float(along_v))
+		for sign_v in [-1.0, 1.0]:
+			var sign := float(sign_v)
+			for dist_v in [32.0, 52.0, 74.0]:
+				var dist := float(dist_v)
+				var center: Vector2 = mid + normal * sign * dist
+				var baseline: Vector2 = center + Vector2(-text_size.x * 0.5, text_size.y * 0.4)
+				var box := Rect2(baseline.x - 2.0, baseline.y - text_size.y, text_size.x + 4.0, text_size.y + 4.0)
+				var score := 100000.0
+				for id in _points:
+					score = minf(score, box.get_center().distance_to(_points[id]) - 90.0)
+				if box.position.y < 148.0:
+					score -= 500.0
+				if box.end.x > size.x - 270.0:
+					score -= 300.0
+				if box.end.y > size.y - 210.0 and box.position.x < 500.0:
+					score -= 300.0
+				if score > best_score:
+					best_score = score
+					best = baseline
+	_draw_caption(best, text, font_size, UiKit.GOLD)
 
 
 func _draw_caption(at: Vector2, text: String, font_size: int, color: Color) -> void:
