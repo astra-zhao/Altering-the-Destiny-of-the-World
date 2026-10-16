@@ -129,7 +129,40 @@ func _print_ending(page: Node) -> void:
 	for row in page._rows:
 		shown += str((row["text"] as Label).text) + " | "
 	print("LAYOUT_ROWS %s %s" % [_size, shown])
-	print("LAYOUT_GAPS %s | %s || avoid=%s turn_stored=%d" % [page._gap_labels[0].text, page._gap_labels[1].text, page._avoid_label.text, _campaign.turn])
+	var avoid: Label = page._avoid_label
+	var gap0: Label = page._gap_labels[0]
+	var gap1: Label = page._gap_labels[1]
+	var image := root.get_viewport().get_texture().get_image()
+	print("LAYOUT_TYPE avoid_size=%s avoid_color=%s avoid_rect=%s metrics=%s" % [avoid.get_theme_font_size("font_size"), avoid.get_theme_color("font_color"), avoid.get_global_rect(), _font_metrics(avoid)])
+	print("LAYOUT_TYPE bar_color=%s bar_rect=%s design_y=%s" % [page._avoid_bar.color, page._avoid_bar.get_global_rect(), _design_span(paper, page._avoid_bar.get_global_rect())])
+	print("LAYOUT_TYPE gap_title_size=%s gap_title_color=%s rect=%s design_y=%s" % [page._gap_title.get_theme_font_size("font_size"), page._gap_title.get_theme_color("font_color"), page._gap_title.get_global_rect(), _design_span(paper, page._gap_title.get_global_rect())])
+	var clip0: Control = page._gap_clips[0]
+	var clip1: Control = page._gap_clips[1]
+	var ink0 := _ink_red(image, clip0.get_global_rect())
+	var ink1 := _ink_red(image, clip1.get_global_rect())
+	var ink_avoid := _ink_cream(image, page._avoid_bar.get_global_rect())
+	print("LAYOUT_TYPE gap0_size=%s color=%s clip=%s design_y=%s ink=%s ink_design=%s text=%s" % [gap0.get_theme_font_size("font_size"), gap0.get_theme_color("font_color"), clip0.get_global_rect(), _design_span(paper, clip0.get_global_rect()), ink0, _design_span(paper, ink0), gap0.text])
+	print("LAYOUT_TYPE gap1_size=%s color=%s clip=%s design_y=%s ink=%s ink_design=%s text=%s head=%s" % [gap1.get_theme_font_size("font_size"), gap1.get_theme_color("font_color"), clip1.get_global_rect(), _design_span(paper, clip1.get_global_rect()), ink1, _design_span(paper, ink1), gap1.text, gap1.text.substr(0, 2)])
+	print("LAYOUT_TYPE avoid_ink=%s avoid_ink_design=%s" % [ink_avoid, _design_span(paper, ink_avoid)])
+	print("LAYOUT_GAPS %s | %s || avoid=%s turn_stored=%d" % [gap0.text, gap1.text, avoid.text, _campaign.turn])
+
+
+func _font_metrics(label: Label) -> String:
+	var font := label.get_theme_font("font")
+	var size := label.get_theme_font_size("font_size")
+	if font == null:
+		return "none"
+	return "h=%.2f ascent=%.2f descent=%.2f" % [font.get_height(size), font.get_ascent(size), font.get_descent(size)]
+
+
+func _design_span(paper: Control, rect: Rect2) -> String:
+	if rect.size == Vector2.ZERO:
+		return "empty"
+	var s := paper.size.y / 368.0
+	var top := 118.0 + (rect.position.y - paper.get_global_rect().position.y) / s
+	var bottom := 118.0 + (rect.end.y - paper.get_global_rect().position.y) / s
+	var left := rect.position.x
+	return "x=%.2f y=%.2f..%.2f" % [left, top, bottom]
 
 
 func _find(node: Node, node_name: String) -> Node:
@@ -177,6 +210,43 @@ func _near(a: Color, b: Color) -> bool:
 	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b) < 0.42
 
 
+func _ink_span(image: Image, rect: Rect2, match: Callable) -> Rect2:
+	var x0 := clampi(int(floor(rect.position.x)), 0, image.get_width() - 1)
+	var y0 := clampi(int(floor(rect.position.y)), 0, image.get_height() - 1)
+	var x1 := clampi(int(ceil(rect.end.x)), 0, image.get_width())
+	var y1 := clampi(int(ceil(rect.end.y)), 0, image.get_height())
+	var min_x := x1
+	var min_y := y1
+	var max_x := x0
+	var max_y := y0
+	var y := y0
+	while y < y1:
+		var x := x0
+		while x < x1:
+			if match.call(image.get_pixel(x, y)):
+				min_x = mini(min_x, x)
+				min_y = mini(min_y, y)
+				max_x = maxi(max_x, x + 1)
+				max_y = maxi(max_y, y + 1)
+			x += 1
+		y += 1
+	if max_x <= min_x or max_y <= min_y:
+		return Rect2()
+	return Rect2(min_x, min_y, max_x - min_x, max_y - min_y)
+
+
+func _ink_red(image: Image, rect: Rect2) -> Rect2:
+	return _ink_span(image, rect, func(pixel: Color) -> bool:
+		return pixel.r > 0.45 and pixel.r > pixel.g + 0.16 and pixel.r > pixel.b + 0.18 and pixel.g < 0.63
+	)
+
+
+func _ink_cream(image: Image, rect: Rect2) -> Rect2:
+	return _ink_span(image, rect, func(pixel: Color) -> bool:
+		return pixel.r > 0.9 and pixel.g > 0.8 and pixel.b > 0.7 and pixel.r + 0.02 >= pixel.g and pixel.g + 0.02 >= pixel.b
+	)
+
+
 func _open(path: String) -> Node:
 	change_scene_to_file(path)
 	for _i in 40:
@@ -204,6 +274,12 @@ func _layout_map(map: Node) -> void:
 
 
 func _shot(file_name: String) -> void:
+	var fade := root.get_node_or_null("Fade")
+	if fade != null and "_rect" in fade:
+		var guard := 0
+		while fade._rect.color.a > 0.02 and guard < 120:
+			await process_frame
+			guard += 1
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var image := root.get_viewport().get_texture().get_image()

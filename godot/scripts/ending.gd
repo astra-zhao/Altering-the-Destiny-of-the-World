@@ -18,6 +18,7 @@ var _rows: Array = []
 var _avoid_bar: ColorRect
 var _avoid_label: Label
 var _gap_title: Label
+var _gap_clips: Array[Control] = []
 var _gap_labels: Array[Label] = []
 var _tiles: Array = []
 var _worldline: Label
@@ -68,27 +69,36 @@ func _build() -> void:
 
 	_avoid_bar = ColorRect.new()
 	_avoid_bar.name = "AvoidBar"
-	_avoid_bar.color = Color(0.545, 0.118, 0.118, 0.14)
+	_avoid_bar.color = _avoid_bar_color()
 	_avoid_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_avoid_bar.clip_contents = true
 	_paper.add_child(_avoid_bar)
-	_avoid_label = UiKit.label("", UiKit.sans, 14, Color("8B1E1E"))
+	_avoid_label = UiKit.label("", UiKit.sans, 15, Color("FFE9D0"))
 	_avoid_label.name = "AvoidLine"
 	_avoid_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_avoid_label.clip_text = false
 	_avoid_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_avoid_bar.add_child(_avoid_label)
 
-	_gap_title = UiKit.label("若要更高", UiKit.serif, 16, UiKit.INK)
+	_gap_title = UiKit.label("若要更高", UiKit.serif, 16, Color("8E2A22"))
 	_gap_title.name = "GapTitle"
 	_gap_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_paper.add_child(_gap_title)
 	for index in 2:
-		var line := UiKit.label("", UiKit.sans, 14, Color("8B1E1E"))
+		var clip := Control.new()
+		clip.name = "GapClip%d" % index
+		clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip.clip_contents = true
+		_paper.add_child(clip)
+		_gap_clips.append(clip)
+		var line := UiKit.label("", UiKit.sans, 15, Color("8E2A22"))
 		line.name = "GapLine%d" % index
-		line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		line.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		line.autowrap_mode = TextServer.AUTOWRAP_OFF
 		line.clip_text = false
 		line.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-		_paper.add_child(line)
+		clip.add_child(line)
 		_gap_labels.append(line)
 
 	var specs := [
@@ -240,6 +250,11 @@ func _layout() -> void:
 	_buttons.size = buttons_size
 
 
+func _avoid_bar_color() -> Color:
+	# #7A1F1F，20% 不透明度。
+	return Color(122.0 / 255.0, 31.0 / 255.0, 31.0 / 255.0, 0.2)
+
+
 func _py(abs_y: float, s: float) -> float:
 	return (abs_y - PAPER_TOP) * s
 
@@ -276,28 +291,49 @@ func _place_left(s: float, left_w: float, margin: float) -> void:
 		y += row_h
 	var avoid_y := _py(312.0, s)
 	var avoid_h := _py(334.0, s) - avoid_y
+	_avoid_bar.color = _avoid_bar_color()
 	_avoid_bar.position = Vector2(margin, avoid_y)
 	_avoid_bar.size = Vector2(left_w, avoid_h)
-	var avoid_size := maxi(11, roundi(14.0 * s))
+	var avoid_size := maxi(15, roundi(15.0 * s))
 	_avoid_label.add_theme_font_size_override("font_size", avoid_size)
+	_avoid_label.add_theme_color_override("font_color", Color("FFE9D0"))
 	_avoid_label.text = _avoid_text(left_w - 12.0 * s, avoid_size)
-	_avoid_label.position = Vector2(6.0 * s, 0)
-	_avoid_label.size = Vector2(left_w - 12.0 * s, avoid_h)
+	var avoid_font := _avoid_label.get_theme_font("font")
+	var avoid_box := avoid_h
+	if avoid_font != null:
+		avoid_box = maxf(avoid_h, avoid_font.get_height(avoid_size))
+	_avoid_label.position = Vector2(6.0 * s, (avoid_h - avoid_box) * 0.5)
+	_avoid_label.size = Vector2(left_w - 12.0 * s, avoid_box)
 	var gaps := _shown_gaps()
-	var gap_size := maxi(12, roundi(16.0 * s))
-	var line_size := maxi(11, roundi(14.0 * s))
+	var gap_size := maxi(15, roundi(16.0 * s))
+	var line_size := maxi(15, roundi(15.0 * s))
 	_gap_title.visible = not gaps.is_empty()
 	_gap_title.add_theme_font_size_override("font_size", gap_size)
+	_gap_title.add_theme_color_override("font_color", Color("8E2A22"))
 	_gap_title.position = Vector2(margin, _py(344.0, s))
 	_gap_title.size = Vector2(left_w, _py(366.0, s) - _py(344.0, s))
+	# 两行共用左栏内边距，起点对齐。槽高 22，底边停在设计 y=412，躲开左下回纹。
+	var slot_h := _py(390.0, s) - _py(368.0, s)
+	var slot_top := _py(368.0, s)
+	var line_font := _gap_labels[0].get_theme_font("font") if not _gap_labels.is_empty() else null
+	var text_h := slot_h
+	if line_font != null:
+		text_h = maxf(slot_h, line_font.get_height(line_size))
 	for index in _gap_labels.size():
 		var line := _gap_labels[index]
+		var clip := _gap_clips[index]
 		line.visible = index < gaps.size()
+		clip.visible = line.visible
 		line.add_theme_font_size_override("font_size", line_size)
+		line.add_theme_color_override("font_color", Color("8E2A22"))
+		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		line.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		if index < gaps.size():
 			line.text = gaps[index]
-		line.position = Vector2(margin, _py(368.0 + float(index) * 22.0, s))
-		line.size = Vector2(left_w, 22.0 * s)
+		clip.position = Vector2(margin, slot_top + float(index) * slot_h)
+		clip.size = Vector2(left_w, slot_h)
+		line.position = Vector2.ZERO
+		line.size = Vector2(left_w, text_h)
 
 
 func _place_tiles(s: float, right_x: float) -> void:
