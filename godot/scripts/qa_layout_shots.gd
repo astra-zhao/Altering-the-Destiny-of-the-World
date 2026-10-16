@@ -134,7 +134,8 @@ func _print_ending(page: Node) -> void:
 	var gap1: Label = page._gap_labels[1]
 	var image := root.get_viewport().get_texture().get_image()
 	print("LAYOUT_TYPE avoid_size=%s avoid_color=%s avoid_rect=%s metrics=%s" % [avoid.get_theme_font_size("font_size"), avoid.get_theme_color("font_color"), avoid.get_global_rect(), _font_metrics(avoid)])
-	print("LAYOUT_TYPE bar_color=%s bar_rect=%s design_y=%s" % [page._avoid_bar.color, page._avoid_bar.get_global_rect(), _design_span(paper, page._avoid_bar.get_global_rect())])
+	print("LAYOUT_TYPE bar_color=%s bar_rect=%s design_y=%s local_x=%s" % [page._avoid_bar.color, page._avoid_bar.get_global_rect(), _design_span(paper, page._avoid_bar.get_global_rect()), _local_x(paper, page._avoid_bar.get_global_rect().position.x)])
+	print("LAYOUT_TYPE plate_color=%s plate=%s local_x=%s" % [page._gap_plate.color, page._gap_plate.get_global_rect(), _local_x(paper, page._gap_plate.get_global_rect().position.x)])
 	print("LAYOUT_TYPE gap_title_size=%s gap_title_color=%s rect=%s design_y=%s" % [page._gap_title.get_theme_font_size("font_size"), page._gap_title.get_theme_color("font_color"), page._gap_title.get_global_rect(), _design_span(paper, page._gap_title.get_global_rect())])
 	var clip0: Control = page._gap_clips[0]
 	var clip1: Control = page._gap_clips[1]
@@ -153,6 +154,11 @@ func _font_metrics(label: Label) -> String:
 	if font == null:
 		return "none"
 	return "h=%.2f ascent=%.2f descent=%.2f" % [font.get_height(size), font.get_ascent(size), font.get_descent(size)]
+
+
+func _local_x(paper: Control, global_x: float) -> float:
+	var scale := paper.size.y / 368.0
+	return (global_x - paper.get_global_rect().position.x) / scale
 
 
 func _design_span(paper: Control, rect: Rect2) -> String:

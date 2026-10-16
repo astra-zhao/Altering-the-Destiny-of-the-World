@@ -17,6 +17,7 @@ var _title: Label
 var _rows: Array = []
 var _avoid_bar: ColorRect
 var _avoid_label: Label
+var _gap_plate: ColorRect
 var _gap_title: Label
 var _gap_clips: Array[Control] = []
 var _gap_labels: Array[Label] = []
@@ -80,6 +81,11 @@ func _build() -> void:
 	_avoid_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_avoid_bar.add_child(_avoid_label)
 
+	_gap_plate = ColorRect.new()
+	_gap_plate.name = "GapPlate"
+	_gap_plate.color = _gap_plate_color()
+	_gap_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_paper.add_child(_gap_plate)
 	_gap_title = UiKit.label("若要更高", UiKit.serif, 16, Color("8E2A22"))
 	_gap_title.name = "GapTitle"
 	_gap_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -251,8 +257,13 @@ func _layout() -> void:
 
 
 func _avoid_bar_color() -> Color:
-	# #7A1F1F，20% 不透明度。
-	return Color(122.0 / 255.0, 31.0 / 255.0, 31.0 / 255.0, 0.2)
+	# #7A1F1F，75%。最亮纸色上 #FFE9D0 仍高于 4.5:1。
+	return Color(122.0 / 255.0, 31.0 / 255.0, 31.0 / 255.0, 0.75)
+
+
+func _gap_plate_color() -> Color:
+	# #F5EDE0，94%。压住山纹后，字色 #8E2A22 仍高于 4.5:1。
+	return Color(245.0 / 255.0, 237.0 / 255.0, 224.0 / 255.0, 0.94)
 
 
 func _py(abs_y: float, s: float) -> float:
@@ -307,12 +318,19 @@ func _place_left(s: float, left_w: float, margin: float) -> void:
 	var gaps := _shown_gaps()
 	var gap_size := maxi(15, roundi(16.0 * s))
 	var line_size := maxi(15, roundi(15.0 * s))
+	# 回纹占纸左 −9…+23。浅底从 +24 起，标题和两行都从 +28 起，底边停在 y=412。
+	var gap_x := 28.0 * s
+	var plate_x := 24.0 * s
+	var column_right := margin + left_w
+	_gap_plate.visible = not gaps.is_empty()
+	_gap_plate.color = _gap_plate_color()
+	_gap_plate.position = Vector2(plate_x, _py(344.0, s))
+	_gap_plate.size = Vector2(maxf(40.0, column_right - plate_x), _py(412.0, s) - _py(344.0, s))
 	_gap_title.visible = not gaps.is_empty()
 	_gap_title.add_theme_font_size_override("font_size", gap_size)
 	_gap_title.add_theme_color_override("font_color", Color("8E2A22"))
-	_gap_title.position = Vector2(margin, _py(344.0, s))
-	_gap_title.size = Vector2(left_w, _py(366.0, s) - _py(344.0, s))
-	# 两行共用左栏内边距，起点对齐。槽高 22，底边停在设计 y=412，躲开左下回纹。
+	_gap_title.position = Vector2(gap_x, _py(344.0, s))
+	_gap_title.size = Vector2(maxf(40.0, column_right - gap_x), _py(366.0, s) - _py(344.0, s))
 	var slot_h := _py(390.0, s) - _py(368.0, s)
 	var slot_top := _py(368.0, s)
 	var line_font := _gap_labels[0].get_theme_font("font") if not _gap_labels.is_empty() else null
@@ -330,10 +348,10 @@ func _place_left(s: float, left_w: float, margin: float) -> void:
 		line.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		if index < gaps.size():
 			line.text = gaps[index]
-		clip.position = Vector2(margin, slot_top + float(index) * slot_h)
-		clip.size = Vector2(left_w, slot_h)
+		clip.position = Vector2(gap_x, slot_top + float(index) * slot_h)
+		clip.size = Vector2(maxf(40.0, column_right - gap_x), slot_h)
 		line.position = Vector2.ZERO
-		line.size = Vector2(left_w, text_h)
+		line.size = Vector2(maxf(40.0, column_right - gap_x), text_h)
 
 
 func _place_tiles(s: float, right_x: float) -> void:
