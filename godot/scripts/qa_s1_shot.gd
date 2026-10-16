@@ -20,14 +20,20 @@ func _run() -> void:
 	change_scene_to_file("res://scenes/s1_night.tscn")
 	await _wait_clear()
 	var scene := current_scene
+	var particles := 0
+	var particle_amount := 0
+	for node in scene.find_children("*", "GPUParticles3D", true, false):
+		particles += 1
+		particle_amount += (node as GPUParticles3D).amount
+	for node in scene.find_children("*", "CPUParticles3D", true, false):
+		particles += 1
+		particle_amount += (node as CPUParticles3D).amount
+	print("S1_SCENE lights=%d particles=%d amount=%d" % [int(scene.call("_count_lights")), particles, particle_amount])
 	var shots: Array = [
 		["t0", 0.0, false],
-		["early", 1.6, false],
-		["hint", 4.0, false],
 		["mid", 6.0, false],
-		["late", 10.5, false],
-		["t12", 12.0, false],
-		["end", 12.0, true],
+		["end", 12.0, false],
+		["end-hall", 12.0, true],
 	]
 	for spec in shots:
 		var tag := str(spec[0])
@@ -48,16 +54,27 @@ func _run() -> void:
 
 
 func _wait_clear() -> void:
-	for _i in 50:
+	var clear_frames := 0
+	for _i in 90:
 		await process_frame
+		var scene := current_scene
+		if scene == null or not scene.has_method("debug_seek"):
+			continue
+		if int(scene.get("_warm_left")) > 0:
+			clear_frames = 0
+			continue
 		var fade := root.get_node_or_null("Fade")
 		if fade == null:
 			continue
 		var rect: ColorRect = fade.get("_rect")
 		if rect != null and rect.color.a < 0.02:
-			await process_frame
-			await RenderingServer.frame_post_draw
-			return
+			clear_frames += 1
+			if clear_frames >= 3:
+				await RenderingServer.frame_post_draw
+				print("S1_FADE_CLEAR a=%.3f" % rect.color.a)
+				return
+		else:
+			clear_frames = 0
 	await RenderingServer.frame_post_draw
 
 
@@ -67,3 +84,10 @@ func _save(tag: String) -> void:
 	DirAccess.make_dir_recursive_absolute("/opt/cursor/artifacts/s1")
 	image.save_png(path)
 	print("S1_SAVED", path, image.get_width(), image.get_height())
+	if tag == "t0" or tag == "end":
+		var crop_w := mini(560, image.get_width())
+		var crop_h := mini(240, image.get_height())
+		var crop := image.get_region(Rect2i(0, 0, crop_w, crop_h))
+		var crop_path := "/opt/cursor/artifacts/s1/lantern-%s-%dx%d.png" % [tag, image.get_width(), image.get_height()]
+		crop.save_png(crop_path)
+		print("S1_SAVED", crop_path, crop.get_width(), crop.get_height())

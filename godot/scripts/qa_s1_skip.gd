@@ -7,11 +7,72 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	if not await _warm_skip():
+		quit(1)
+		return
 	await _spam()
 	await _unskipped()
 	await _leak()
 	print("S1_SKIP_PROBE_OK")
 	quit(0)
+
+
+func _warm_skip() -> bool:
+	for kind in ["space", "click"]:
+		OS.set_environment("S1_SNAP", "")
+		_prepare_window(Vector2i(1280, 720))
+		change_scene_to_file("res://scenes/s1_night.tscn")
+		var scene: Node = null
+		var warm_left := 0
+		for _i in 8:
+			await process_frame
+			scene = current_scene
+			if scene == null:
+				continue
+			warm_left = int(scene.get("_warm_left"))
+			if warm_left > 0:
+				break
+		if scene == null:
+			print("S1_WARM_SKIP_FAIL kind=%s reason=no_scene" % kind)
+			return false
+		var done_during := bool(scene.get("_push_done"))
+		if kind == "space":
+			var key := InputEventKey.new()
+			key.keycode = KEY_SPACE
+			key.physical_keycode = KEY_SPACE
+			key.pressed = true
+			key.echo = false
+			scene._unhandled_input(key)
+		else:
+			var mouse := InputEventMouseButton.new()
+			mouse.button_index = MOUSE_BUTTON_LEFT
+			mouse.pressed = true
+			mouse.position = Vector2(640, 360)
+			scene._unhandled_input(mouse)
+		var queued := bool(scene.get("_skip_queued"))
+		var skipping_now := bool(scene.get("_skipping"))
+		print("S1_WARM_SKIP_ARM kind=%s warm_left=%d queued=%s skipping=%s done=%s" % [kind, warm_left, queued, skipping_now, done_during])
+		if warm_left <= 0 or not queued or skipping_now or done_during:
+			print("S1_WARM_SKIP_FAIL kind=%s reason=not_queued_during_warmup" % kind)
+			return false
+		var guard := 0
+		while not bool(scene.get("_push_done")) and guard < 180:
+			await process_frame
+			guard += 1
+		var camera := scene.get_node("Camera3D") as Camera3D
+		var dist: float = camera.position.distance_to(Vector3(0, 1.5, 0))
+		var counts := _count(scene)
+		var buttons := 0
+		var board := scene.get_node_or_null("UI/StoryBoard")
+		if board != null:
+			for node in board.find_children("*", "BaseButton", true, false):
+				buttons += 1
+		print("S1_WARM_SKIP_AFTER kind=%s done=%s frames=%d cam=%s dist=%.4f boards=%d cards=%d buttons=%d" % [kind, scene.get("_push_done"), guard, camera.position, dist, counts.x, counts.y, buttons])
+		if not bool(scene.get("_push_done")) or dist > 0.05 or counts.x != 1 or counts.y != 3 or buttons != 3:
+			print("S1_WARM_SKIP_FAIL kind=%s" % kind)
+			return false
+	print("S1_WARM_SKIP_OK")
+	return true
 
 
 func _spam() -> void:

@@ -9,8 +9,7 @@ const _HALL_AUDIO := preload("res://audio/s1/hall.ogg")
 const _TEX := {
 	"floor_brick.png": preload("res://assets/s1/floor_brick.png"),
 	"column_lacquer.png": preload("res://assets/s1/column_lacquer.png"),
-	"screen_panel.png": preload("res://assets/s1/screen_panel.png"),
-	"throne_face.png": preload("res://assets/s1/throne_face.png"),
+	"throne_backwall.png": preload("res://assets/s1/throne_backwall.png"),
 	"window_lattice.png": preload("res://assets/s1/window_lattice.png"),
 	"shaft.png": preload("res://assets/s1/shaft.png"),
 	"fog_sheet.png": preload("res://assets/s1/fog_sheet.png"),
@@ -334,22 +333,17 @@ func _build_hall() -> void:
 	_box(court, "RightWall", Vector3(0.35, 11, 24), Vector3(6.0, 5.5, -12), _lit(Color("140E10"), 0.86, 0.0))
 	_box(court, "BackWall", Vector3(12, 11, 0.4), Vector3(0, 5.5, -24), _lit(Color("120C0E"), 0.88, 0.0))
 	_box(court, "Ceiling", Vector3(12, 0.3, 24), Vector3(0, 11.1, -12), _lit(Color("0C0A0C"), 0.92, 0.0))
-	var screen_mat := _painted("screen_panel.png", 0.55, 0.16)
-	_box(court, "Screen", Vector3(6.8, 5.4, 0.18), Vector3(0, 3.9, -21.9), screen_mat)
-	var face := _painted("throne_face.png", 0.48, 0.42)
-	var throne := _quad(court, "ThroneFace", Vector2(2.9, 3.75), Vector3(0, 3.075, -19.5), face)
-	throne.rotation_degrees = Vector3(0, 0, 0)
-	_box(court, "Seat", Vector3(2.15, 0.42, 1.15), Vector3(0, 1.41, -18.85), _lit(Color("1A100E"), 0.7, 0.05))
-	_box(court, "Cushion", Vector3(1.45, 0.16, 0.62), Vector3(0, 1.68, -18.5), _lit(Color("7A1C14"), 0.58, 0.0))
-	for side in [-1.0, 1.0]:
-		_cylinder(court, "Post", 0.055, 1.35, Vector3(side * 0.95, 2.15, -19.15), gold, 8)
+	# 背墙贴片换掉屏风和龙椅方块。羽化在图里，材质不再加渐变遮罩。
+	var backwall := _quad(court, "ThroneBackwall", Vector2(6.8, 5.3), Vector3(0, 3.85, -21.9), _backwall_mat())
+	(backwall.mesh as QuadMesh).orientation = QuadMesh.FACE_Z
 	_windows(court)
 	_lantern_mesh(court, Vector3(-3.6, 3.0, -19.5), true)
 	_lantern_mesh(court, Vector3(3.6, 3.0, -19.5), true)
 	_lantern_mesh(court, Vector3(-2.6, 3.4, -13.5), true)
 	_lantern_mesh(court, Vector3(2.6, 3.4, -13.5), true)
-	_lantern_mesh(court, Vector3(-2.8, 3.6, -9.5), false)
+	# 左外侧吊灯原在 (-2.8, 3.6, -9.5)，推到头会钻进标题牌。牌子不动，这盏去掉。右外侧留在 (2.8, 3.6, -9.5)。
 	_lantern_mesh(court, Vector3(2.8, 3.6, -9.5), false)
+	print("S1_BACKWALL size=6.8x5.3 pos=0,3.85,-21.9 lantern_far_left=removed lantern_far_right=2.8,3.6,-9.5")
 	_candle(court, Vector3(-1.9, 2.7, -17.5))
 	_candle(court, Vector3(1.9, 2.7, -17.5))
 
@@ -376,6 +370,8 @@ func _build_lights() -> void:
 	_omni("L4", Vector3(1.9, 2.7, -17.5), Color("FFC878"), 2.0, 6.0, true)
 	_omni("L5", Vector3(-2.6, 3.4, -13.5), Color("FFB45A"), 2.0, 7.0, false)
 	_omni("L6", Vector3(2.6, 3.4, -13.5), Color("FFB45A"), 2.0, 7.0, false)
+	# 贴片前 0.8m、y=2.2。无影。加上原有 7 盏后一共 8 盏。
+	_omni("LThrone", Vector3(0, 2.2, -21.1), Color("FFB45A"), 1.2, 6.0, false)
 	var moon := DirectionalLight3D.new()
 	moon.name = "MoonLight"
 	moon.light_color = Color("5E8CC8")
@@ -435,8 +431,9 @@ func _build_atmosphere() -> void:
 		z -= 2.0
 	var warm := _sheet(Color("FFB45A"), 0.08, "fog_sheet.png")
 	warm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
-	_fog_sheets.append(_quad($Court, "WarmFog", Vector2(8, 1.6), Vector3(0, 1.6, -18.2), warm))
-	_fog_sheets.append(_quad($Court, "WarmFog2", Vector2(6, 1.2), Vector3(0, 2.2, -20.4), warm.duplicate()))
+	# 两张暖雾放到贴片前 0.3m（z=-21.6），不铺在画面上。
+	_fog_sheets.append(_quad($Court, "WarmFog", Vector2(8, 1.6), Vector3(0, 1.6, -21.6), warm))
+	_fog_sheets.append(_quad($Court, "WarmFog2", Vector2(6, 1.2), Vector3(0, 2.2, -21.6), warm.duplicate()))
 	_streaks()
 	_moon_pool()
 	# 粒子停在卡片带之上：近处贴地的灰会投进 y>440。
@@ -479,9 +476,8 @@ func _glow_billboards() -> void:
 		_glow_count += 1
 	var far := mat.duplicate() as StandardMaterial3D
 	far.albedo_color.a = 0.22
-	_quad($Court, "FarGlow", Vector2(0.7, 0.7), Vector3(-2.8, 3.6, -9.5), far)
 	_quad($Court, "FarGlow", Vector2(0.7, 0.7), Vector3(2.8, 3.6, -9.5), far)
-	_glow_count += 2
+	_glow_count += 1
 
 
 func _particles(node_name: String, amount: int, color: Color, alpha: float, size_range: Vector2, gravity: Vector3, extents: Vector3, pos: Vector3, dust: bool) -> void:
@@ -734,14 +730,20 @@ func _window_mat(color: Color, energy: float) -> StandardMaterial3D:
 	return mat
 
 
-func _painted(file_name: String, roughness: float, emission_energy: float) -> StandardMaterial3D:
-	var mat := _lit(Color.WHITE, roughness, 0.16)
-	var tex := _tex(file_name)
+func _backwall_mat() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	var tex := _tex("throne_backwall.png")
 	mat.albedo_texture = tex
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	mat.roughness = 1.0
+	mat.metallic = 0.0
 	mat.emission_enabled = true
 	mat.emission = Color.WHITE
 	mat.emission_texture = tex
-	mat.emission_energy_multiplier = emission_energy
+	mat.emission_energy_multiplier = 0.35
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
 	return mat
 
 

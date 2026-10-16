@@ -22,7 +22,12 @@
 ## 三、配乐
 - Floating Lanterns · John Bartmann · CC0（结局页底部署名，原文：「配乐：Floating Lanterns · John Bartmann · CC0」）。
 
-## 四、游戏内 Credits 建议文案
+## 四、S1 龙椅背墙贴片
+- 文件：`assets/s1/throne_backwall.png`（1024×802，RGBA）。进包只有这一张；原图和叠合预览不进包。
+- 来源：GenerateImage（AI 生成），2026-10-16。提示词：「晚明皇家宝座大殿背墙，朱漆金雕云龙，正面正投影」。之后做了裁切，并在上缘 150px、左右缘 170px 羽化，下缘不羽化。
+- 不是自行绘制，也不是购买素材。不能当成没有版权风险。上架前要和手绘氛围图一起复核。
+
+## 五、游戏内 Credits 建议文案
 - 字体：Noto Serif/Sans CJK SC（SIL OFL 1.1）
 - 配乐：Floating Lanterns · John Bartmann · CC0
 - 美术：AI 辅助生成（Grok Bot，2026-10-15），后期由 Alice 处理
