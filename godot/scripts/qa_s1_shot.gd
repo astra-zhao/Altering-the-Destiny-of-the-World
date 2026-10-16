@@ -15,25 +15,35 @@ func _run() -> void:
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_IGNORE
 	root.min_size = Vector2i(640, 480)
 	root.size = size
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
 	DisplayServer.window_set_size(size)
 	change_scene_to_file("res://scenes/s1_night.tscn")
 	await _wait_clear()
-	_save("start")
 	var scene := current_scene
-	if scene.has_method("snap_pose"):
-		scene.snap_pose("end_hall")
-	for _i in 4:
-		await process_frame
-	await RenderingServer.frame_post_draw
-	_save("end-hall")
-	if scene.has_method("snap_pose"):
-		scene.snap_pose("end")
-	for _i in 8:
-		await process_frame
-	await RenderingServer.frame_post_draw
-	_save("end")
+	var shots: Array = [
+		["t0", 0.0, false],
+		["early", 1.6, false],
+		["hint", 4.0, false],
+		["mid", 6.0, false],
+		["late", 10.5, false],
+		["t12", 12.0, false],
+		["end", 12.0, true],
+	]
+	for spec in shots:
+		var tag := str(spec[0])
+		scene.debug_seek(float(spec[1]), bool(spec[2]))
+		for _i in 4:
+			await process_frame
+		await RenderingServer.frame_post_draw
+		_save(tag)
+		var title: Rect2 = scene.push_title_rect()
+		print("S1_TITLE_RECT %s %.1f %.1f %.1f %.1f" % [tag, title.position.x, title.position.y, title.size.x, title.size.y])
+		var hint := scene.get_node_or_null("UI/SkipHint") as CanvasItem
+		if hint != null:
+			var hint_rect := (hint as Control).get_global_rect()
+			print("S1_HINT %s vis=%s a=%.2f %.1f %.1f %.1f %.1f" % [tag, hint.visible, hint.modulate.a, hint_rect.position.x, hint_rect.position.y, hint_rect.size.x, hint_rect.size.y])
 	var camera := scene.get_node("Camera3D") as Camera3D
-	print("S1_SHOT_OK size=%s viewport=%s cam=%s fov=%.2f rot=%s keep=%s lights=%d" % [size, root.get_viewport().get_visible_rect().size, camera.position, camera.fov, camera.rotation_degrees, camera.keep_aspect, _count_lights(scene)])
+	print("S1_SHOT_OK size=%s viewport=%s cam=%s fov=%.2f rot=%s" % [size, root.get_viewport().get_visible_rect().size, camera.position, camera.fov, camera.rotation_degrees])
 	quit(0)
 
 
@@ -49,14 +59,6 @@ func _wait_clear() -> void:
 			await RenderingServer.frame_post_draw
 			return
 	await RenderingServer.frame_post_draw
-
-
-func _count_lights(scene: Node) -> int:
-	var n := 0
-	for node in scene.find_children("*", "Light3D", true, false):
-		if node is Light3D and (node as Light3D).visible:
-			n += 1
-	return n
 
 
 func _save(tag: String) -> void:
