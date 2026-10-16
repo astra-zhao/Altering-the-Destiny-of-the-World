@@ -24,3 +24,7 @@ itch 页面写的是 Creative Commons Zero，商业可用、不要求署名，�
 切图清单、边距和这份说明的细目也在 `assets/ui/README-切图清单.md`、`assets/ui/ATTRIBUTION.md`。
 
 结局页底部署名只用结局曲：配乐：Floating Lanterns · John Bartmann · CC0。地图里的「署名」写全四首、字体和上述美术来源。
+
+## S1 殿内环境声
+
+`audio/s1/hall.ogg` 是本工程用 ffmpeg 合成的 6 秒棕噪声循环，不是第三方曲目，不替换上面四条 BGM。S1 里以 -24 dB 叠在剧情曲下面。导入保持 Loop。
