@@ -165,7 +165,7 @@ func _build_top() -> void:
 	add_child(_top)
 	_chip_row = HBoxContainer.new()
 	_chip_row.add_theme_constant_override("separation", 4)
-	_chip_row.clip_contents = true
+	_chip_row.clip_contents = false
 	_chip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_top.add_child(_chip_row)
 	for spec in [
@@ -239,10 +239,20 @@ func _add_chip(parent: Node, icon_name: String, caption: String, slot: String) -
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(name)
+	var value_box := MarginContainer.new()
+	value_box.size_flags_horizontal = Control.SIZE_SHRINK_END
+	value_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	value_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	value_box.add_theme_constant_override("margin_left", 0)
+	value_box.add_theme_constant_override("margin_top", 0)
+	value_box.add_theme_constant_override("margin_right", 0)
+	value_box.add_theme_constant_override("margin_bottom", 0)
+	row.add_child(value_box)
 	var value := UiKit.label("0", UiKit.sans_bold, 17, UiKit.GOLD)
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(value)
+	value.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	value_box.add_child(value)
 	var tag := Control.new()
 	tag.name = "WarnTag"
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -272,6 +282,7 @@ func _add_chip(parent: Node, icon_name: String, caption: String, slot: String) -
 	tag.add_child(tag_text)
 	_chip_meta[plate] = {
 		"value": value,
+		"value_box": value_box,
 		"mark": mark,
 		"tag": tag,
 		"tag_bg": tag_bg,
@@ -342,11 +353,11 @@ func _build_hint_row() -> void:
 	_hint_row = HBoxContainer.new()
 	_hint_row.z_index = 6
 	_hint_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hint_row.clip_contents = true
+	_hint_row.clip_contents = false
 	add_child(_hint_row)
 	var plate := UiKit.nine("panel_frame_s.png", 10)
 	plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	plate.custom_minimum_size = Vector2(280, 108)
+	plate.custom_minimum_size = Vector2(280, 56)
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hint_row.add_child(plate)
 	var column := VBoxContainer.new()
@@ -367,9 +378,10 @@ func _build_hint_row() -> void:
 	row.add_child(prefix)
 	_hint = UiKit.label("", UiKit.sans, 16, UiKit.CREAM)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_hint.clip_text = true
+	_hint.clip_text = false
+	_hint.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_hint.custom_minimum_size = Vector2(40, 22)
-	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_hint.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	row.add_child(_hint)
 	_log = UiKit.label("", UiKit.sans, 14, UiKit.GOLD)
 	_log.clip_text = true
@@ -682,10 +694,10 @@ func _layout_chrome() -> void:
 	_chip_row.position = Vector2(0, 0)
 	_chip_row.size = Vector2(chip_span, 48)
 	_fit_chips()
+	var side_left := size.x - 284.0
 	if _forecast_bar != null:
 		_forecast_bar.position = Vector2(12, 58)
 		var forecast_w := 970.0
-		var side_left := size.x - 284.0
 		if 12.0 + forecast_w > side_left - 8.0:
 			forecast_w = maxf(420.0, side_left - 20.0)
 		_forecast_bar.size = Vector2(forecast_w, 44)
@@ -695,10 +707,12 @@ func _layout_chrome() -> void:
 		var banner_h := 54.0
 		_turn_banner.size = Vector2(banner_w, banner_h)
 		var center_x := 640.0 if is_equal_approx(size.x, 1280.0) else size.x * 0.5
-		_turn_banner.position = Vector2(center_x - banner_w * 0.5, 98)
-	var hint_w := minf(520.0, size.x - 320.0)
-	_hint_row.position = Vector2(8, 156)
-	_hint_row.size = Vector2(hint_w, 72)
+		var banner_x := center_x - banner_w * 0.5
+		if banner_x + banner_w > side_left - 8.0:
+			banner_x = side_left - 8.0 - banner_w
+		banner_x = maxf(8.0, banner_x)
+		_turn_banner.position = Vector2(banner_x, 98)
+	_fit_hint()
 	_side.position = Vector2(size.x - 284, 62)
 	_side.clip_contents = true
 	var seal := 188.0
@@ -785,7 +799,7 @@ func _refresh() -> void:
 	_chips["morale"].text = str(Campaign.morale)
 	_chips["liaodong"].text = str(Campaign.liaodong)
 	_chips["pressure"].text = str(Campaign.pressure)
-	var turn_text := "%d/%d" % [Campaign.turn, Baseline.PLAY_TURNS]
+	var turn_text := "%d/%d" % [_shown_turn(), Baseline.PLAY_TURNS]
 	if Campaign.settled:
 		turn_text += " 完"
 	_chips["turn"].text = turn_text
@@ -795,11 +809,9 @@ func _refresh() -> void:
 	_yuan_line.text = "袁崇焕 %s" % Campaign.yuan_status
 	_log.text = Campaign.log_text
 	var hint := _next_hint()
-	if hint.begins_with("下一步："):
-		hint = hint.substr(4)
-	elif hint.begins_with("下一步:"):
-		hint = hint.substr(4)
+	hint = hint.replace("下一步：", "").replace("下一步:", "").strip_edges()
 	_hint.text = hint
+	_fit_hint()
 	_mute_button.text = "取消静音" if Bgm.muted else "静音"
 	_refresh_markers()
 	_refresh_popup()
@@ -828,7 +840,8 @@ func _next_hint() -> String:
 		if preview == "":
 			return Campaign.attack_block_reason(_selected_id)
 		return "点亮的城可以攻。%s" % preview
-	var finale := Campaign.finale_hint()
+	# 第 6、7 回合横幅已经写了终局提醒。这里再拼一次会把「下一步」挤成两截。
+	var finale := "" if _finale_on_banner() else Campaign.finale_hint()
 	if not Campaign.main_done and _selected_id == "":
 		return _with_finale(finale, "下一步：先点一座我方的城（金色的）。")
 	if not Campaign.main_done:
@@ -836,6 +849,58 @@ func _next_hint() -> String:
 	if not Campaign.civil_done:
 		return _with_finale(finale, "下一步：内政还能做一次。不做的话，直接点「下一回合」。")
 	return _with_finale(finale, "下一步：点右下角红色的「下一回合」。")
+
+
+func _shown_turn() -> int:
+	return mini(Campaign.turn, Baseline.PLAY_TURNS)
+
+
+func _finale_on_banner() -> bool:
+	return Campaign.turn >= 6 and Campaign.turn < Baseline.PLAY_TURNS and not Campaign.settled and not Campaign.s3_done
+
+
+func _fit_hint() -> void:
+	if _hint_row == null or _hint == null or size.x < 80.0:
+		return
+	var font := _hint.get_theme_font("font")
+	if font == null:
+		font = UiKit.sans
+	var font_size := _hint.get_theme_font_size("font_size")
+	if font_size <= 0:
+		font_size = 16
+	var text_w := 0.0
+	if font != null:
+		text_w = font.get_string_size(_hint.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var prefix_w := 72.0
+	var prefix := _hint.get_parent().get_child(0) as Label
+	if prefix != null and font != null:
+		var prefix_font := prefix.get_theme_font("font")
+		var prefix_size := prefix.get_theme_font_size("font_size")
+		if prefix_font != null and prefix_size > 0:
+			prefix_w = prefix_font.get_string_size(prefix.text, HORIZONTAL_ALIGNMENT_LEFT, -1, prefix_size).x + 8.0
+	var chrome := 40.0 + prefix_w
+	var limit := maxf(280.0, size.x - 16.0)
+	var want := chrome + text_w
+	var hint_w := minf(maxf(420.0, want), limit)
+	var inner_w := maxf(80.0, hint_w - chrome)
+	var lines_h := float(font_size + 6)
+	if font != null and want > hint_w + 1.0:
+		lines_h = font.get_multiline_string_size(_hint.text, HORIZONTAL_ALIGNMENT_LEFT, inner_w, font_size).y
+		_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	else:
+		_hint.autowrap_mode = TextServer.AUTOWRAP_OFF
+	# 一行正文约 28，加上「下一步」和底下日志。超出就加高，不省略。
+	var row_h := 56.0 if lines_h <= float(font_size + 8) else clampf(lines_h + 40.0, 72.0, 132.0)
+	_hint.custom_minimum_size = Vector2(inner_w, maxf(22.0, lines_h))
+	_hint.clip_text = false
+	_hint.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	var plate := _hint_row.get_child(0) as Control
+	if plate != null:
+		plate.custom_minimum_size = Vector2(hint_w, row_h)
+	_hint_row.custom_minimum_size = Vector2(hint_w, row_h)
+	_hint_row.position = Vector2(8, 156)
+	_hint_row.size = Vector2(hint_w, row_h)
+	_hint_row.clip_contents = false
 
 
 func _with_finale(finale: String, line: String) -> String:
@@ -1056,7 +1121,8 @@ func _fit_chips() -> void:
 		mark.size = Vector2(14, 14)
 		var tag: Control = meta["tag"]
 		tag.size = Vector2(64, 24)
-		tag.position = Vector2(maxf(0.0, each - 66.0), 0)
+		# 相对筹码左上角。筹码行停在 y=8，预判条不动。
+		tag.position = Vector2(each - 60.0, -6.0)
 	_chip_row.size = Vector2(span, 48)
 
 
@@ -2052,6 +2118,7 @@ func _paint_danger() -> void:
 		var value: Label = meta["value"]
 		value.add_theme_font_override("font", UiKit.sans_bold)
 		value.add_theme_font_size_override("font_size", 17)
+		var value_box: MarginContainer = meta["value_box"]
 		var mark: TextureRect = meta["mark"]
 		var tag: Control = meta["tag"]
 		var tag_bg: TextureRect = meta["tag_bg"]
@@ -2061,9 +2128,15 @@ func _paint_danger() -> void:
 		mark.size = Vector2(14, 14)
 		mark.position = Vector2(4, 5)
 		tag.size = Vector2(64, 24)
+		var plate_w := (plate as Control).size.x
+		if plate_w < 40.0:
+			plate_w = (plate as Control).custom_minimum_size.x
+		tag.position = Vector2(plate_w - 60.0, -6.0)
 		if level == "":
 			(plate as Control).tooltip_text = ""
 			value.add_theme_color_override("font_color", UiKit.GOLD)
+			value_box.add_theme_constant_override("margin_top", 0)
+			value_box.add_theme_constant_override("margin_bottom", 0)
 			mark.visible = false
 			tag.visible = false
 			if nine != null:
@@ -2076,6 +2149,11 @@ func _paint_danger() -> void:
 		var red := level == "red"
 		(plate as Control).tooltip_text = Campaign.danger_line()
 		value.add_theme_color_override("font_color", Color("FF6A55") if red else Color("FFD24A"))
+		# 17px 字在 48px 筹码里居中时，字形已经落在 y≈27–39。再下移会压到 31–43。
+		# 标签底边约在 y=24，和这档字形留有空隙。
+		value.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		value_box.add_theme_constant_override("margin_top", 0)
+		value_box.add_theme_constant_override("margin_bottom", 0)
 		mark.texture = UiKit.tex("icon_warn_red_32.png" if red else "icon_warn_yellow_32.png")
 		mark.visible = true
 		tag.visible = true
