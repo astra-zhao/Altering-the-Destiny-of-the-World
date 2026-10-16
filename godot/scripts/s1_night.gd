@@ -46,6 +46,14 @@ var _skip_hint: Label
 var _skip_from := Vector3.ZERO
 var _hold_clock := false
 var _warm_frames := 0
+var _warm_left := 0
+var _warm_started := 0
+var _skip_queued := false
+var _audio_played := false
+var _hint_faded := false
+var _audio_window := false
+var _snap := ""
+var _glow_count := 0
 var _push_wall := 0
 var _skip_wall := 0
 
@@ -62,8 +70,7 @@ func _ready() -> void:
 	_ambience()
 	_build_push_chrome()
 	Bgm.set_mode("story")
-	if has_node("/root/Fade"):
-		get_node("/root/Fade").fade_in()
+	_cover_black()
 	_choices.visible = false
 	for node in _choices.get_children():
 		if node is BaseButton:
@@ -75,25 +82,87 @@ func _ready() -> void:
 	_camera.near = 0.06
 	_camera.far = 80.0
 	_apply_chrome()
+	# 卡片和跳过提示在墨色底下先画出来。alpha 0 的控件经常不进绘制，Metal 就不会在这一帧编译。
+	_prebuild_board()
+	if _board != null:
+		_board.visible = true
+		_board.modulate.a = 1.0
+	if _skip_hint != null:
+		_skip_hint.visible = true
+		_skip_hint.modulate.a = 1.0
 	print("S1_BUILD_MS %.2f" % [(Time.get_ticks_usec() - started) / 1000.0])
-	var snap := OS.get_environment("S1_SNAP")
-	if snap == "end":
+	_snap = OS.get_environment("S1_SNAP")
+	if _snap == "end":
 		_clock = _PUSH_SEC
 		_camera.position = _CAM_END
-		_prebuild_board()
 		_finish_reveal()
+		_lift_cover()
 		return
-	if snap == "start":
-		_push_started = true
-		return
-	_push_started = true
-	_start_push()
+	_warm_started = Time.get_ticks_usec()
+	_warm_left = 2
+	print("S1_WARM_ARMED lights=%d glows=%d ash=%d dust=%d board=%s hint=%s" % [_count_lights(), _glow_count, _ASH_AMOUNT, _DUST_AMOUNT, _board != null, _skip_hint != null])
 
 
 func _exit_tree() -> void:
 	if _push_tween != null and _push_tween.is_valid():
 		_push_tween.kill()
 		_push_tween = null
+
+
+func _cover_black() -> void:
+	var fade := get_node_or_null("/root/Fade")
+	if fade == null:
+		return
+	var rect := fade.get("_rect") as ColorRect
+	if rect == null:
+		return
+	rect.color = Color(0.05, 0.03, 0.02, 1.0)
+
+
+func _lift_cover() -> void:
+	if has_node("/root/Fade"):
+		get_node("/root/Fade").fade_in()
+
+
+func _finish_warmup() -> void:
+	if _board != null and not _push_done:
+		_board.visible = false
+		_board.modulate.a = 0.0
+	if _skip_hint != null and not _push_done:
+		_skip_hint.modulate.a = 0.0
+	var elapsed := (Time.get_ticks_usec() - _warm_started) / 1000.0
+	print("S1_WARM_MS %.2f" % elapsed)
+	_lift_cover()
+	if _skip_queued:
+		_push_started = true
+		_skip_push()
+		return
+	if _snap == "start":
+		_push_started = true
+		return
+	_start_push()
+
+
+func _is_skip_event(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		return mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if not key.pressed or key.echo:
+			return false
+		return key.keycode == KEY_SPACE or key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER or key.keycode == KEY_ESCAPE
+	return false
+
+
+func _count_lights() -> int:
+	var count := 0
+	for node in find_children("*", "Light3D", true, false):
+		if node is Light3D and (node as Light3D).visible:
+			count += 1
+	return count
+
+
 
 
 func _process(delta: float) -> void:
@@ -107,24 +176,31 @@ func _process(delta: float) -> void:
 		if mat == null:
 			continue
 		mat.uv1_offset.x += delta * 0.01
-	if _warm_frames > 0 and not _push_done and not _hold_clock:
-		_warm_frames -= 1
-		if _warm_frames == 0 and _board != null:
-			_board.visible = false
+	if _warm_left > 0:
+		_warm_left -= 1
+		if _warm_left == 0:
+			_finish_warmup()
+		return
 	if not _push_started or _push_done or _hold_clock:
 		if _hold_clock:
 			_apply_chrome()
 		return
 	_clock += delta
 	_apply_chrome()
-	if _board == null and _clock >= _PREBUILD_AT:
-		_prebuild_board()
+	if not _audio_window and _clock >= 2.7:
+		_audio_window = true
+		var player := get_node_or_null("HallAmbience") as AudioStreamPlayer
+		print("S1_AUDIO_WINDOW t=%.2f exists=%s playing=%s" % [_clock, player != null, player != null and player.playing])
 	if delta >= 0.080:
 		print("S1_SPIKE_MS %.2f t=%.2f" % [delta * 1000.0, _clock])
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _push_done or _skipping:
+		return
+	if _warm_left > 0 and _is_skip_event(event):
+		_skip_queued = true
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
 		var mouse := event as InputEventMouseButton
@@ -400,10 +476,12 @@ func _glow_billboards() -> void:
 	]
 	for spot in spots:
 		_quad($Court, "LanternGlow", Vector2(1.15, 1.15), spot, mat)
+		_glow_count += 1
 	var far := mat.duplicate() as StandardMaterial3D
 	far.albedo_color.a = 0.22
 	_quad($Court, "FarGlow", Vector2(0.7, 0.7), Vector3(-2.8, 3.6, -9.5), far)
 	_quad($Court, "FarGlow", Vector2(0.7, 0.7), Vector3(2.8, 3.6, -9.5), far)
+	_glow_count += 2
 
 
 func _particles(node_name: String, amount: int, color: Color, alpha: float, size_range: Vector2, gravity: Vector3, extents: Vector3, pos: Vector3, dust: bool) -> void:
@@ -464,6 +542,8 @@ func _ambience() -> void:
 	var stream := _HALL_AUDIO
 	if stream == null:
 		return
+	if _audio_played or get_node_or_null("HallAmbience") != null:
+		return
 	stream.loop = true
 	var player := AudioStreamPlayer.new()
 	player.name = "HallAmbience"
@@ -472,6 +552,8 @@ func _ambience() -> void:
 	player.bus = "Master"
 	add_child(player)
 	player.play()
+	_audio_played = true
+	print("S1_AUDIO_PLAY t=%.2f" % _clock)
 
 
 func _build_push_chrome() -> void:
@@ -532,9 +614,13 @@ func _apply_chrome() -> void:
 	if _skip_hint == null or _push_done:
 		return
 	if _clock < 3.0:
-		_skip_hint.modulate.a = 0.0
+		if _warm_left <= 0:
+			_skip_hint.modulate.a = 0.0
 	else:
 		_skip_hint.modulate.a = clampf((_clock - 3.0) / 0.4, 0.0, 1.0)
+		if not _hint_faded and _skip_hint.modulate.a > 0.0:
+			_hint_faded = true
+			print("S1_HINT_FADE t=%.2f node_already=true" % _clock)
 
 
 func _board_spec() -> Dictionary:
@@ -560,7 +646,6 @@ func _prebuild_board() -> void:
 	_board.modulate.a = 0.0
 	_board.visible = true
 	_mute_mouse(_board)
-	_warm_frames = 2
 	print("S1_PREBUILD_MS %.2f t=%.2f" % [(Time.get_ticks_usec() - started) / 1000.0, _clock])
 
 
