@@ -429,9 +429,10 @@ func _build_atmosphere() -> void:
 		var sheet := _quad($Court, "FogSheet", Vector2(12, 2), Vector3(0, 0.85, z), mat)
 		_fog_sheets.append(sheet)
 		z -= 2.0
-	var warm := _sheet(Color("FFB45A"), 0.08, "fog_sheet.png")
+	var warm := _sheet(Color("FFB45A"), 0.04, "fog_sheet.png")
 	warm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
-	# 两张暖雾放到贴片前 0.3m（z=-21.6），不铺在画面上。
+	warm.render_priority = -1
+	# 两张暖雾仍在贴片前 0.3m，α 收到 0.04，并且排在贴片后面画。
 	_fog_sheets.append(_quad($Court, "WarmFog", Vector2(8, 1.6), Vector3(0, 1.6, -21.6), warm))
 	_fog_sheets.append(_quad($Court, "WarmFog2", Vector2(6, 1.2), Vector3(0, 2.2, -21.6), warm.duplicate()))
 	_streaks()
@@ -741,9 +742,11 @@ func _backwall_mat() -> StandardMaterial3D:
 	mat.emission_enabled = true
 	mat.emission = Color.WHITE
 	mat.emission_texture = tex
-	mat.emission_energy_multiplier = 0.35
+	mat.emission_energy_multiplier = 0.25
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
+	# 透明队列里后画，暖雾和厅内雾片盖不到画面上。
+	mat.render_priority = 1
 	return mat
 
 
