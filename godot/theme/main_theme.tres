@@ -1,0 +1,7 @@
+[gd_resource type="Theme" load_steps=2 format=3 uid="uid://c6w4p2n5k7m3r"]
+
+[ext_resource type="FontFile" uid="uid://bgbn8al05yyvf" path="res://theme/WenQuanYiMicroHei-Subset.ttf" id="1_font"]
+
+[resource]
+default_font = ExtResource("1_font")
+default_font_size = 16

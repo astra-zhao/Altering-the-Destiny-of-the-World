@@ -1,0 +1,240 @@
+[gd_scene load_steps=3 format=3 uid="uid://d2k7n5p4w3q8m"]
+
+[ext_resource type="Script" uid="uid://clukiu7swlagp" path="res://scripts/big_map.gd" id="1_map"]
+[ext_resource type="Script" uid="uid://c4gjs2u5btriq" path="res://scripts/map_canvas.gd" id="2_canvas"]
+
+[node name="BigMap" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_map")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0784314, 0.0666667, 0.054902, 1)
+
+[node name="RootMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Columns" type="HBoxContainer" parent="RootMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="MapColumn" type="VBoxContainer" parent="RootMargin/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.5
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="RootMargin/Columns/MapColumn"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="RootMargin/Columns/MapColumn/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "改命：天下"
+
+[node name="SubtitleLabel" type="Label" parent="RootMargin/Columns/MapColumn/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 8
+text = "v0.2 · M0 空壳大地图"
+
+[node name="MapPanel" type="PanelContainer" parent="RootMargin/Columns/MapColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MapHost" type="Control" parent="RootMargin/Columns/MapColumn/MapPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(640, 460)
+
+[node name="MapCanvas" type="Control" parent="RootMargin/Columns/MapColumn/MapPanel/MapHost"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_canvas")
+
+[node name="CityLayer" type="Control" parent="RootMargin/Columns/MapColumn/MapPanel/MapHost"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="HintLabel" type="Label" parent="RootMargin/Columns/MapColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "示意邻接，不是实测地图。金钮为明，绛钮为后金，赭钮为争议；虚线为远邻。"
+autowrap_mode = 3
+
+[node name="SideColumn" type="VBoxContainer" parent="RootMargin/Columns"]
+layout_mode = 2
+custom_minimum_size = Vector2(308, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 10
+
+[node name="HudPanel" type="PanelContainer" parent="RootMargin/Columns/SideColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HudBox" type="VBoxContainer" parent="RootMargin/Columns/SideColumn/HudPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HudHeading" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "局面 · 初值占位"
+
+[node name="HudGrid" type="GridContainer" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="TurnName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "回合"
+
+[node name="TurnLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "第 1 / 10（不推进）"
+
+[node name="SilverName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "银两"
+
+[node name="SilverLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "40"
+
+[node name="GrainName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "粮草"
+
+[node name="GrainLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "45"
+
+[node name="MoraleName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "民心"
+
+[node name="MoraleLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "35"
+
+[node name="LiaodongName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "辽东稳固"
+
+[node name="LiaodongLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "40"
+
+[node name="PressureName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "后金压力"
+
+[node name="PressureLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "50"
+
+[node name="WorldlineName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "世界线偏移"
+
+[node name="WorldlineLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+
+[node name="YuanName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "袁崇焕"
+
+[node name="YuanLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "前线可用"
+
+[node name="FactionLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "玩家 · 明　　后金 · AI"
+
+[node name="HudFoot" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "只展示大纲初值。调兵、简战、后金 AI 与结局都未接入。"
+autowrap_mode = 3
+
+[node name="DetailPanel" type="PanelContainer" parent="RootMargin/Columns/SideColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DetailBox" type="VBoxContainer" parent="RootMargin/Columns/SideColumn/DetailPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DetailTitle" type="Label" parent="RootMargin/Columns/SideColumn/DetailPanel/DetailBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "城池"
+
+[node name="DetailBody" type="Label" parent="RootMargin/Columns/SideColumn/DetailPanel/DetailBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "点击地图上的城池，查看归属、备注与邻接。"
+autowrap_mode = 3
+
+[node name="StoryButton" type="Button" parent="RootMargin/Columns/SideColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "切换→抉择→写回（M1 占位）"
+
+[node name="StoryNote" type="Label" parent="RootMargin/Columns/SideColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "M1 将在此接入：切换场景 → 抉择 → 写回。按下只说明流程，不改局面。"
+autowrap_mode = 3
