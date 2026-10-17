@@ -124,7 +124,6 @@ func _build_ui() -> void:
 	_sub.text = "朝堂与法场。镜头先看杀，再回到抉择。"
 	_sub.add_theme_color_override("font_color", Color(0.8, 0.82, 0.9))
 	column.add_child(_sub)
-	Kit.install_font(_sub)
 	var look_row := HBoxContainer.new()
 	column.add_child(look_row)
 	var court_btn := Button.new()
@@ -151,6 +150,7 @@ func _build_ui() -> void:
 	if locked:
 		d_text += "\n尚未结交袁，不能选"
 	_add_choice("D", d_text, locked)
+	Kit.install_font(column)
 
 
 func _add_choice(choice_id: String, text: String, disabled: bool = false) -> void:

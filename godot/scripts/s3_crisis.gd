@@ -97,7 +97,6 @@ func _build_ui() -> void:
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_sub.add_theme_color_override("font_color", Color(0.86, 0.8, 0.72))
 	column.add_child(_sub)
-	Kit.install_font(_sub)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -109,6 +108,7 @@ func _build_ui() -> void:
 	_add("A", "A. 倾国勤王\n辽东≥55 且后金压力≤45 才标勤王成功，并压力 -8、世界线 +5；否则世界线 +2、民心 -3")
 	_add("B", "B. 固守以拖待变\n民心 +6，辽东 +3，世界线 +4")
 	_add("C", "C. 开海税补饷\n银两 +20，民心 -8，世界线 +10")
+	Kit.install_font(column)
 
 
 func _add(choice_id: String, text: String) -> void:

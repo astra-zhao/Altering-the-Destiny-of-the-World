@@ -1,5 +1,13 @@
 extends Button
-## 城标是画出来的印鉴和城楼，没有外部贴图。
+## 城印。名称和兵力是字体，不烤在 city_badge 上。
+## 切图只有 normal / hover / selected。按下时用 selected，让按下这一下能看见。
+
+const UiKit := preload("res://scripts/ui_kit.gd")
+
+const _SIZE := Vector2(160, 160)
+const _BADGE := Vector2(104, 104)
+const _RING := Vector2(160, 160)
+const _NAME_LIMIT := 78.0
 
 var city_name := ""
 var owner_name := ""
@@ -9,50 +17,128 @@ var hinted := false
 var yuan_here := false
 var holding := false
 
+var _ring: TextureRect
+var _badge: TextureRect
+var _name: Label
+var _num: Label
+var _hover := false
+var _down := false
+
 
 func _ready() -> void:
+	UiKit.boot()
+	custom_minimum_size = _SIZE
+	size = _SIZE
 	focus_mode = Control.FOCUS_NONE
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	text = ""
 	flat = true
+	text = ""
 	var empty := StyleBoxEmpty.new()
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		add_theme_stylebox_override(state, empty)
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	mouse_entered.connect(_on_enter)
+	mouse_exited.connect(_on_exit)
+	button_down.connect(_on_down)
+	button_up.connect(_on_up)
+	_ring = TextureRect.new()
+	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ring.texture = UiKit.tex("ring_select.png")
+	_ring.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ring.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_ring.visible = false
+	add_child(_ring)
+	_badge = TextureRect.new()
+	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_badge.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_badge.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	add_child(_badge)
+	_name = UiKit.label("", UiKit.serif, 15, UiKit.GOLD)
+	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_name.clip_text = true
+	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	UiKit.outline(_name, 4)
+	add_child(_name)
+	_num = UiKit.label("", UiKit.serif, 20, UiKit.CREAM)
+	_num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	UiKit.outline(_num, 4)
+	add_child(_num)
+	_layout()
+	_paint()
+
+
+func badge_center() -> Vector2:
+	return _SIZE * 0.5
 
 
 func redraw() -> void:
-	queue_redraw()
+	_paint()
 
 
-func _draw() -> void:
-	var center := Vector2(size.x * 0.5, 30.0)
-	var fill := Color(0.56, 0.16, 0.13)
-	if owner_name == "明":
-		fill = Color(0.80, 0.64, 0.32)
-	elif owner_name == "争议":
-		fill = Color(0.62, 0.38, 0.2)
-	draw_circle(center, 20.0, fill.darkened(0.18))
-	draw_circle(center + Vector2(0, -1), 18.0, fill)
-	var roof := PackedVector2Array([
-		center + Vector2(0, -16),
-		center + Vector2(13, -2),
-		center + Vector2(-13, -2),
-	])
-	draw_colored_polygon(roof, Color(0.28, 0.08, 0.07))
-	draw_rect(Rect2(center + Vector2(-7, -1), Vector2(14, 11)), Color(0.95, 0.9, 0.78))
-	draw_rect(Rect2(center + Vector2(-2, 2), Vector2(4, 7)), Color(0.25, 0.12, 0.08))
-	if marked:
-		draw_arc(center, 25.0, 0, TAU, 36, Color(0.98, 0.88, 0.45), 3.0, true)
-	elif hinted:
-		draw_arc(center, 25.0, 0, TAU, 28, Color(0.72, 0.52, 0.22, 0.95), 1.6, true)
-	var font := get_theme_default_font()
-	if font == null:
+func _layout() -> void:
+	var badge_pos := (_SIZE - _BADGE) * 0.5
+	_badge.position = badge_pos
+	_badge.size = _BADGE
+	_ring.position = badge_pos + (_BADGE - _RING) * 0.5
+	_ring.size = _RING
+	_name.position = badge_pos + Vector2((_BADGE.x - _NAME_LIMIT) * 0.5, 22)
+	_name.size = Vector2(_NAME_LIMIT, 22)
+	_num.position = badge_pos + Vector2(8, 46)
+	_num.size = Vector2(_BADGE.x - 16, 32)
+
+
+func _paint() -> void:
+	if _badge == null:
 		return
-	var ink := Color(0.16, 0.09, 0.05)
-	draw_string(font, Vector2(0, size.y - 16), city_name, HORIZONTAL_ALIGNMENT_CENTER, size.x, 16, ink)
-	var sub := "%s %d" % [owner_name, troops]
+	var kind := "jin"
+	if owner_name == "明":
+		kind = "ming"
+	elif owner_name == "争议":
+		kind = "contested"
+	var state := "normal"
+	if marked or _down:
+		state = "selected"
+	elif _hover or hinted:
+		state = "hover"
+	_badge.texture = UiKit.tex("city_badge_%s_%s.png" % [kind, state])
+	_ring.visible = marked
+	var title := city_name
 	if yuan_here:
-		sub += " · 袁"
+		title += " · 袁"
 	if holding:
-		sub += " · 守"
-	draw_string(font, Vector2(0, size.y - 1), sub, HORIZONTAL_ALIGNMENT_CENTER, size.x, 12, Color(0.32, 0.18, 0.1))
+		title += " · 守"
+	_name.text = title
+	_fit_title(title)
+	_num.text = str(troops)
+	z_index = 0
+
+
+func _fit_title(title: String) -> void:
+	var px := 15
+	var font := UiKit.serif
+	if font != null:
+		while px > 10 and font.get_string_size(title, HORIZONTAL_ALIGNMENT_CENTER, -1, px).x > _NAME_LIMIT:
+			px -= 1
+	_name.add_theme_font_size_override("font_size", px)
+
+
+func _on_enter() -> void:
+	_hover = true
+	_paint()
+
+
+func _on_exit() -> void:
+	_hover = false
+	_down = false
+	_paint()
+
+
+func _on_down() -> void:
+	_down = true
+	_paint()
+
+
+func _on_up() -> void:
+	_down = false
+	_paint()

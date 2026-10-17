@@ -73,12 +73,17 @@ static func moon(parent: Node3D, energy: float, rotation: Vector3, color: Color)
 	return light
 
 
-static func install_font(control: Control) -> void:
-	var font := control.get_theme_font("font")
-	var fallback := load("res://theme/cjk_system_font.tres") as Font
-	if font == null or fallback == null:
+static func install_font(root: Node) -> void:
+	var font := load("res://assets/ui/NotoSansSC-Regular.otf") as FontFile
+	if font == null or root == null:
 		return
-	for item in font.fallbacks:
-		if item == fallback:
-			return
-	font.fallbacks.append(fallback)
+	font.allow_system_fallback = false
+	font.fallbacks.clear()
+	_pin_subset(root, font)
+
+
+static func _pin_subset(node: Node, font: Font) -> void:
+	if node is Label or node is Button:
+		(node as Control).add_theme_font_override("font", font)
+	for child in node.get_children():
+		_pin_subset(child, font)

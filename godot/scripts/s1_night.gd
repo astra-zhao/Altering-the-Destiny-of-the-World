@@ -1,6 +1,7 @@
 extends Node3D
 ## S1 登基夜。低模夜殿，镜头推近之后才放出 A/B/C。写回规则仍在 Campaign.apply_s1。
 
+const Kit := preload("res://scripts/story_kit.gd")
 const _PUSH_SEC := 2.15
 const _CAM_START := Vector3(0, 6.4, 12.2)
 const _CAM_END := Vector3(0, 2.85, 3.15)
@@ -14,7 +15,7 @@ const _FOV_END := 46.0
 
 
 func _ready() -> void:
-	_install_font_fallback()
+	Kit.install_font($UI)
 	_orient_lights()
 	_polish_light()
 	Bgm.set_mode("story")
@@ -72,17 +73,6 @@ func _reveal_choices() -> void:
 	_choices.modulate.a = 0.0
 	var tween := create_tween()
 	tween.tween_property(_choices, "modulate:a", 1.0, 0.4)
-
-
-func _install_font_fallback() -> void:
-	var font := _sub.get_theme_font("font")
-	var fallback := load("res://theme/cjk_system_font.tres") as Font
-	if font == null or fallback == null:
-		return
-	for item in font.fallbacks:
-		if item == fallback:
-			return
-	font.fallbacks.append(fallback)
 
 
 func _choose(choice_id: String) -> void:
