@@ -1,7 +1,7 @@
 extends Control
 ## 开篇三张字卡。每张约 7 秒，点击或空格进下一张。最后一张进登基夜，不把同一次按键再送给推镜。
+## 文字框按 Alice v1.4：(160, 160, 960, 360)。
 
-const HALL := preload("res://scenes/s1_night.tscn")
 const UiKit := preload("res://scripts/ui_kit.gd")
 const CARD_SEC := 7.0
 const LINES: PackedStringArray = [
@@ -16,17 +16,12 @@ var _leaving := false
 var _timer_on := true
 var _cooldown := 0.0
 var _body: Label
-var _count: Label
+var _dots: Control
 
 
 func _ready() -> void:
 	UiKit.boot()
 	Campaign.release_skip_guard_if_idle()
-	var hall := HALL.instantiate()
-	hall.backdrop_only = true
-	hall.name = "Hall"
-	add_child(hall)
-	move_child(hall, 0)
 	_build()
 	_show()
 	Bgm.set_mode("story")
@@ -35,42 +30,88 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	var bg := TextureRect.new()
+	bg.texture = UiKit.tex("bg_story_s1.jpg")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
 	var shade := TextureRect.new()
-	shade.texture = UiKit.tex("shade_story.png")
+	shade.texture = _prologue_shade()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shade.stretch_mode = TextureRect.STRETCH_SCALE
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.modulate = Color(1, 1, 1, 0.88)
 	add_child(shade)
+	var stage := Control.new()
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.set_anchors_preset(Control.PRESET_CENTER)
+	stage.offset_left = -640
+	stage.offset_top = -360
+	stage.offset_right = 640
+	stage.offset_bottom = 360
+	add_child(stage)
 	var panel := UiKit.nine("panel_frame_l.png", 26)
 	panel.name = "PrologueCard"
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -460
-	panel.offset_top = -150
-	panel.offset_right = 460
-	panel.offset_bottom = 150
-	add_child(panel)
-	_count = UiKit.label("", UiKit.sans, 16, UiKit.GOLD)
-	_count.position = Vector2(36, 28)
-	_count.size = Vector2(200, 28)
-	panel.add_child(_count)
-	_body = UiKit.label("", UiKit.serif, 30, Color("FFF3D6"))
+	panel.position = Vector2(160, 160)
+	panel.size = Vector2(960, 360)
+	stage.add_child(panel)
+	_body = UiKit.label("", _spaced(UiKit.serif, 3), 26, Color("F5EDE0"))
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_body.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_body.position = Vector2(48, 72)
-	_body.size = Vector2(824, 180)
+	_body.add_theme_constant_override("line_spacing", 22)
+	_body.position = Vector2(98, 74)
+	_body.size = Vector2(764, 204)
 	panel.add_child(_body)
-	var hint := UiKit.label("点击或按空格继续", UiKit.sans, 16, UiKit.GOLD)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	hint.offset_left = -280
-	hint.offset_top = -48
-	hint.offset_right = -28
-	hint.offset_bottom = -16
-	add_child(hint)
+	_dots = Control.new()
+	_dots.position = Vector2(613, 624)
+	_dots.size = Vector2(54, 12)
+	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dots.draw.connect(_draw_dots)
+	stage.add_child(_dots)
+	var hint := UiKit.label("点击或空格跳过", UiKit.sans_bold, 14, Color("CDBB97"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.position = Vector2(0, 678)
+	hint.size = Vector2(1280, 20)
+	stage.add_child(hint)
+
+
+func _draw_dots() -> void:
+	for i in LINES.size():
+		var center := Vector2(5 + i * 22, 6)
+		if i == _index:
+			_dots.draw_circle(center, 5, Color("D4A84B"))
+		else:
+			_dots.draw_arc(center, 4.2, 0, TAU, 24, Color("D4A84B"), 1.5, true)
+
+
+func _prologue_shade() -> Texture2D:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.30, 1.0])
+	gradient.colors = PackedColorArray([
+		Color8(6, 4, 2, 184),
+		Color8(6, 4, 2, 140),
+		Color8(6, 4, 2, 199),
+	])
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.width = 4
+	tex.height = 256
+	tex.fill_from = Vector2(0.5, 0)
+	tex.fill_to = Vector2(0.5, 1)
+	return tex
+
+
+func _spaced(font: Font, pixels: int) -> Font:
+	if font == null:
+		return font
+	var varied := FontVariation.new()
+	varied.base_font = font
+	varied.spacing_glyph = pixels
+	return varied
 
 
 func _process(delta: float) -> void:
@@ -85,7 +126,8 @@ func _process(delta: float) -> void:
 
 func _show() -> void:
 	_body.text = LINES[_index]
-	_count.text = "%d / %d" % [_index + 1, LINES.size()]
+	if _dots != null:
+		_dots.queue_redraw()
 
 
 func card_text() -> String:

@@ -1,10 +1,11 @@
 extends Control
-## 标题页。背景复用登基夜殿堂，不新做 3D。设置和确认框先用现有字和切图，版式等 Alice。
+## 标题页。版式按 Alice v1.4（1280×720）。底图是登基夜氛围图，设置和确认框仍用现有漆器组件。
 
-const HALL := preload("res://scenes/s1_night.tscn")
 const UiKit := preload("res://scripts/ui_kit.gd")
+const STAGE := Vector2(1280, 720)
 
 var _continue: Button
+var _save_hint: Label
 var _note: Label
 var _settings: Control
 var _volume: HSlider
@@ -19,8 +20,9 @@ var _dialog_action := ""
 
 func _ready() -> void:
 	UiKit.boot()
-	_mount_hall()
-	_build_menu()
+	_build_backdrop(_title_shade())
+	var stage := _stage()
+	_build_menu(stage)
 	_build_settings()
 	_build_dialog()
 	_sync_continue()
@@ -29,87 +31,244 @@ func _ready() -> void:
 		get_node("/root/Fade").fade_in()
 
 
-func _mount_hall() -> void:
-	var hall := HALL.instantiate()
-	hall.backdrop_only = true
-	hall.name = "Hall"
-	add_child(hall)
-	move_child(hall, 0)
+func _build_backdrop(shade_tex: Texture2D) -> void:
+	var bg := TextureRect.new()
+	bg.name = "StoryBackdrop"
+	bg.texture = UiKit.tex("bg_story_s1.jpg")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
+	var shade := TextureRect.new()
+	shade.texture = shade_tex
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
 
 
-func _build_menu() -> void:
-	var wash := ColorRect.new()
-	wash.color = Color(0.05, 0.03, 0.02, 0.42)
-	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wash.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	wash.offset_bottom = 176
-	add_child(wash)
-	var title := UiKit.label("改命：天下", UiKit.serif, 64, Color("FFF3D6"))
+func _stage() -> Control:
+	var stage := Control.new()
+	stage.name = "Stage"
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.set_anchors_preset(Control.PRESET_CENTER)
+	stage.offset_left = -STAGE.x * 0.5
+	stage.offset_top = -STAGE.y * 0.5
+	stage.offset_right = STAGE.x * 0.5
+	stage.offset_bottom = STAGE.y * 0.5
+	add_child(stage)
+	return stage
+
+
+func _build_menu(stage: Control) -> void:
+	var title := UiKit.label("改命：天下", _spaced(UiKit.serif, 18), 72, Color("F3E2BF"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	title.offset_left = -420
-	title.offset_right = 420
-	title.offset_top = 48
-	title.offset_bottom = 124
+	title.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	# Noto 的字面比字号矮一截，标签上移后墨迹顶边才落在 y=88。
+	title.position = Vector2(0, 67)
+	title.size = Vector2(STAGE.x, 110)
 	UiKit.outline(title, 8)
-	add_child(title)
-	var sub := UiKit.label("明末 · 苍凉家国", UiKit.serif, 22, UiKit.GOLD)
+	stage.add_child(title)
+	stage.add_child(_gold_rule(178))
+	stage.add_child(_gold_rule(198))
+	var sub := UiKit.label("明末 · 苍凉家国", _spaced(UiKit.serif, 10), 18, Color("CDBB97"))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	sub.offset_left = -320
-	sub.offset_right = 320
-	sub.offset_top = 124
-	sub.offset_bottom = 160
-	UiKit.outline(sub, 6)
-	add_child(sub)
-	var column := VBoxContainer.new()
-	column.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	column.offset_left = -150
-	column.offset_right = 150
-	column.offset_top = -360
-	column.offset_bottom = -56
-	column.add_theme_constant_override("separation", 12)
-	column.alignment = BoxContainer.ALIGNMENT_END
-	add_child(column)
-	var start := _menu_button("开始游戏", true)
+	sub.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	sub.position = Vector2(0, 205)
+	sub.size = Vector2(STAGE.x, 26)
+	UiKit.outline(sub, 4)
+	stage.add_child(sub)
+	var start := _menu_button(stage, "开始游戏", 470, 280, "primary")
 	start.name = "StartButton"
 	start.pressed.connect(_on_start)
-	column.add_child(start)
-	_continue = _menu_button("继续", false)
+	_continue = _menu_button(stage, "继续", 470, 360, "disabled")
 	_continue.name = "ContinueButton"
 	_continue.pressed.connect(_on_continue)
-	column.add_child(_continue)
-	var settings := _menu_button("设置", false)
+	_save_hint = UiKit.label("暂无存档", UiKit.sans_bold, 12, Color("E85D4C"))
+	_save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_hint.position = Vector2(470, 416)
+	_save_hint.size = Vector2(340, 18)
+	stage.add_child(_save_hint)
+	var settings := _menu_button(stage, "设置", 470, 440, "secondary")
 	settings.name = "SettingsButton"
 	settings.pressed.connect(open_settings)
-	column.add_child(settings)
-	var quit := _menu_button("退出", false)
+	var quit := _menu_button(stage, "退出", 470, 520, "secondary")
 	quit.name = "QuitButton"
 	quit.pressed.connect(_on_quit)
-	column.add_child(quit)
+	var version := UiKit.label("v0.4", UiKit.sans_bold, 13, Color(232.0 / 255.0, 213.0 / 255.0, 181.0 / 255.0, 0.45))
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	version.position = Vector2(1160, 684)
+	version.size = Vector2(102, 22)
+	stage.add_child(version)
 	_note = UiKit.label("", UiKit.sans, 16, UiKit.CREAM)
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_note.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_note.offset_left = -360
-	_note.offset_right = 360
-	_note.offset_top = -48
-	_note.offset_bottom = -16
-	add_child(_note)
+	_note.position = Vector2(200, 640)
+	_note.size = Vector2(880, 24)
+	stage.add_child(_note)
 
 
-func _menu_button(text: String, filled: bool) -> Button:
-	var button := UiKit.painted_button(text, filled, 300)
-	var disabled := StyleBoxFlat.new()
-	disabled.bg_color = Color(0.28, 0.26, 0.24, 0.88)
-	disabled.border_color = Color(0.45, 0.42, 0.38)
-	disabled.set_border_width_all(2)
-	disabled.content_margin_left = 16
-	disabled.content_margin_right = 16
-	disabled.content_margin_top = 6
-	disabled.content_margin_bottom = 6
-	button.add_theme_stylebox_override("disabled", disabled)
-	button.add_theme_color_override("font_disabled_color", Color(0.62, 0.58, 0.52))
+func _menu_button(stage: Control, text: String, x: float, y: float, kind: String) -> Button:
+	var shadow := ColorRect.new()
+	shadow.color = Color(0, 0, 0, 0.45)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.position = Vector2(x, y + 5)
+	shadow.size = Vector2(340, 56)
+	stage.add_child(shadow)
+	var button := Button.new()
+	button.text = text
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.position = Vector2(x, y)
+	button.size = Vector2(340, 56)
+	button.custom_minimum_size = Vector2(340, 56)
+	var fill := TextureRect.new()
+	fill.name = "Fill"
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fill.show_behind_parent = true
+	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.offset_left = 2
+	fill.offset_top = 2
+	fill.offset_right = -2
+	fill.offset_bottom = -2
+	fill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fill.stretch_mode = TextureRect.STRETCH_SCALE
+	button.add_child(fill)
+	_paint_menu(button, kind)
+	button.mouse_entered.connect(func() -> void:
+		if button.disabled:
+			return
+		var base := str(button.get_meta("kind"))
+		_paint_menu(button, "primary_hot" if base == "primary" else "secondary_hot")
+	)
+	button.mouse_exited.connect(func() -> void:
+		if button.disabled:
+			return
+		_paint_menu(button, str(button.get_meta("kind")))
+	)
+	button.set_meta("kind", kind)
+	stage.add_child(button)
 	return button
+
+
+func _paint_menu(button: Button, kind: String) -> void:
+	var top := Color("4A3420")
+	var bottom := Color("1C140C")
+	var border := Color("D4A84B")
+	var font_color := Color("E8D5B5")
+	var font_size := 22
+	var spacing := 10
+	if kind == "primary" or kind == "primary_hot":
+		top = Color("C43C2C") if kind == "primary_hot" else Color("B3382C")
+		bottom = Color("6A1812")
+		font_color = Color("FFF3E0")
+		font_size = 24
+		spacing = 8
+	elif kind == "secondary_hot":
+		top = Color("5C4030")
+		bottom = Color("2A1C12")
+		font_color = Color("FFF6E4")
+	elif kind == "disabled":
+		top = Color("3A342E")
+		bottom = Color("221E1A")
+		border = Color("6B635A")
+		font_color = Color("6B635A")
+	var fill := button.get_node("Fill") as TextureRect
+	fill.texture = _vgrad(top, bottom)
+	var box := _clear_border(border)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(state, box)
+	var disabled := _clear_border(Color("6B635A"))
+	button.add_theme_stylebox_override("disabled", disabled)
+	button.add_theme_font_override("font", _spaced(UiKit.serif, spacing))
+	button.add_theme_font_size_override("font_size", font_size)
+	button.add_theme_color_override("font_color", font_color)
+	button.add_theme_color_override("font_hover_color", font_color)
+	button.add_theme_color_override("font_pressed_color", font_color)
+	button.add_theme_color_override("font_disabled_color", Color("6B635A"))
+
+
+func _clear_border(border: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0, 0, 0, 0)
+	box.border_color = border
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(4)
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	return box
+
+
+func _gold_rule(y: float) -> TextureRect:
+	var line := TextureRect.new()
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.position = Vector2(500, y)
+	line.size = Vector2(280, 2)
+	line.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	line.stretch_mode = TextureRect.STRETCH_SCALE
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.831, 0.659, 0.294, 0))
+	gradient.set_offset(0, 0)
+	gradient.add_point(0.5, Color("D4A84B"))
+	gradient.add_point(1.0, Color(0.831, 0.659, 0.294, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.width = 280
+	tex.height = 2
+	tex.fill_from = Vector2(0, 0.5)
+	tex.fill_to = Vector2(1, 0.5)
+	line.texture = tex
+	return line
+
+
+func _title_shade() -> Texture2D:
+	return _shade([
+		[0.0, Color8(8, 5, 3, 158)],
+		[0.35, Color8(8, 5, 3, 115)],
+		[0.72, Color8(8, 5, 3, 199)],
+		[1.0, Color8(8, 5, 3, 235)],
+	])
+
+
+func _shade(stops: Array) -> Texture2D:
+	var gradient := Gradient.new()
+	var offsets := PackedFloat32Array()
+	var colors := PackedColorArray()
+	for stop in stops:
+		offsets.append(float(stop[0]))
+		colors.append(stop[1])
+	gradient.offsets = offsets
+	gradient.colors = colors
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.width = 4
+	tex.height = 256
+	tex.fill_from = Vector2(0.5, 0)
+	tex.fill_to = Vector2(0.5, 1)
+	return tex
+
+
+func _vgrad(top: Color, bottom: Color) -> Texture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, top)
+	gradient.set_color(1, bottom)
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.width = 4
+	tex.height = 64
+	tex.fill_from = Vector2(0.5, 0)
+	tex.fill_to = Vector2(0.5, 1)
+	return tex
+
+
+func _spaced(font: Font, pixels: int) -> Font:
+	if font == null:
+		return font
+	var varied := FontVariation.new()
+	varied.base_font = font
+	varied.spacing_glyph = pixels
+	return varied
 
 
 func _build_settings() -> void:
@@ -208,7 +367,12 @@ func _paper(width: float, height: float) -> Control:
 
 
 func _sync_continue() -> void:
-	_continue.disabled = not Campaign.has_campaign_save()
+	var has_save := Campaign.has_campaign_save()
+	_continue.disabled = not has_save
+	_continue.set_meta("kind", "secondary" if has_save else "disabled")
+	_paint_menu(_continue, str(_continue.get_meta("kind")))
+	if _save_hint != null:
+		_save_hint.visible = not has_save
 
 
 func _on_start() -> void:

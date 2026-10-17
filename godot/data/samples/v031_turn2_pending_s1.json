@@ -1,39 +1,63 @@
 {
-  "version": 3,
-  "turn": 2,
-  "silver": 40,
-  "grain": 42,
-  "morale": 35,
-  "liaodong": 40,
-  "pressure": 50,
-  "worldline": 0,
-  "yuan_status": "前线可用",
-  "befriended_yuan": false,
-  "yuan_city": "C4",
-  "hold_city": "",
-  "main_done": false,
-  "civil_done": false,
-  "settled": false,
-  "s1_done": false,
-  "s2_done": false,
-  "s3_done": false,
-  "s1_choice": "",
-  "s2_choice": "",
-  "s3_choice": "",
-  "held_ningyuan": true,
-  "loyalist_success": false,
-  "pending_story": "s1",
-  "ending_id": "",
-  "outlook_before_finale": "",
-  "log_text": "进入第 2 回合。",
-  "guide_step": 3,
-  "guide_done": true,
-  "cities": [
-    {"id": "C1", "faction": "明", "troops": 20},
-    {"id": "C2", "faction": "明", "troops": 14},
-    {"id": "C3", "faction": "明", "troops": 12},
-    {"id": "C4", "faction": "明", "troops": 17},
-    {"id": "C5", "faction": "后金", "troops": 26},
-    {"id": "C6", "faction": "后金", "troops": 10}
-  ]
+	"befriended_yuan": false,
+	"cities": [
+		{
+			"faction": "明",
+			"id": "C1",
+			"troops": 20
+		},
+		{
+			"faction": "明",
+			"id": "C2",
+			"troops": 14
+		},
+		{
+			"faction": "明",
+			"id": "C3",
+			"troops": 12
+		},
+		{
+			"faction": "明",
+			"id": "C4",
+			"troops": 18
+		},
+		{
+			"faction": "后金",
+			"id": "C5",
+			"troops": 26
+		},
+		{
+			"faction": "后金",
+			"id": "C6",
+			"troops": 10
+		}
+	],
+	"civil_done": false,
+	"ending_id": "",
+	"grain": 45,
+	"guide_done": false,
+	"guide_step": 0,
+	"held_ningyuan": true,
+	"hold_city": "",
+	"liaodong": 40,
+	"log_text": "后金按兵不动。进入第 2 回合。",
+	"loyalist_success": false,
+	"main_done": false,
+	"morale": 35,
+	"outlook_before_finale": "",
+	"pending_story": "s1",
+	"pressure": 50,
+	"s1_choice": "",
+	"s1_done": false,
+	"s2_choice": "",
+	"s2_done": false,
+	"s3_choice": "",
+	"s3_done": false,
+	"settled": false,
+	"silver": 40,
+	"turn": 2,
+	"version": 3,
+	"worldline": 0,
+	"yuan_city": "C4",
+	"yuan_status": "前线可用"
 }
