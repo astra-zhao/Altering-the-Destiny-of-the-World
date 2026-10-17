@@ -12,6 +12,8 @@ func _ready() -> void:
 	_build_world()
 	_build_ui()
 	Bgm.set_mode("story")
+	if has_node("/root/Fade"):
+		get_node("/root/Fade").fade_in()
 	_camera.position = Vector3(-1.5, 4.6, 8.5)
 	_camera.look_at(Vector3(0, 1.5, -8), Vector3.UP)
 	var tween := create_tween()
@@ -43,19 +45,10 @@ func _choose(choice_id: String) -> void:
 
 func _build_world() -> void:
 	var world := WorldEnvironment.new()
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.05, 0.04, 0.06)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.12, 0.08, 0.07)
-	env.ambient_light_energy = 0.45
-	world.environment = env
+	world.environment = Kit.night_environment(Color(0.05, 0.04, 0.07), Color(0.18, 0.08, 0.05))
 	add_child(world)
-	var moon := DirectionalLight3D.new()
-	moon.rotation_degrees = Vector3(-35, 140, 0)
-	moon.light_color = Color(0.75, 0.7, 0.62)
-	moon.light_energy = 0.55
-	add_child(moon)
+	Kit.moon(self, 0.7, Vector3(-35, 140, 0), Color(0.75, 0.7, 0.62))
+	Kit.moon(self, 0.32, Vector3(-12, -40, 0), Color(1.0, 0.45, 0.18))
 	var stage := Node3D.new()
 	add_child(stage)
 	Kit.box(stage, "Ground", Vector3(22, 0.2, 24), Vector3(0, -0.1, -2), Color(0.16, 0.14, 0.12))

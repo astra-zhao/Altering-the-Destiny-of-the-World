@@ -9,3 +9,6 @@
 *.uid text eol=lf
 *.svg text eol=lf
 *.md text eol=lf
+*.ogg binary
+*.ttf binary
+*.mp3 binary

@@ -29,10 +29,14 @@ var loyalist_success := false
 var pending_story := ""
 var ending_id := ""
 var skip_ending_scene := false
-var log_text := "第 1 回合。点城，再选主行动。"
+## 0 点城，1 选行动，2 结束回合，3 已完成。跳过或完成后写入引导标记。
+var guide_step := 0
+var guide_done := false
+var log_text := "第 1 回合。先点一座我方的城。"
 var cities: Dictionary = {}
 
 const SAVE_PATH := "user://campaign_m2.json"
+const GUIDE_PATH := "user://v03_guide.json"
 
 
 func _ready() -> void:
@@ -65,7 +69,12 @@ func reset() -> void:
 	pending_story = ""
 	ending_id = ""
 	skip_ending_scene = false
-	log_text = "第 1 回合。点城，再选主行动。"
+	log_text = "第 1 回合。先点一座我方的城。"
+	guide_step = 0
+	guide_done = false
+	if guide_disk_dismissed():
+		guide_done = true
+		guide_step = 3
 	cities.clear()
 	for src in Baseline.CITIES:
 		cities[str(src["id"])] = {
@@ -438,7 +447,7 @@ func load_game() -> Dictionary:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return _fail("存档损坏。")
 	if not apply_snapshot(parsed):
-		return _fail("存档缺字段。")
+		return _fail("存档不完整，已保持当前局面。")
 	skip_ending_scene = false
 	return _ok("已读档。第 %d 回合。" % turn)
 
@@ -453,7 +462,7 @@ func snapshot() -> Dictionary:
 			"troops": int(info["troops"]),
 		})
 	return {
-		"version": 2,
+		"version": 3,
 		"turn": turn,
 		"silver": silver,
 		"grain": grain,
@@ -479,13 +488,74 @@ func snapshot() -> Dictionary:
 		"pending_story": pending_story,
 		"ending_id": ending_id,
 		"log_text": log_text,
+		"guide_step": guide_step,
+		"guide_done": guide_done,
 		"cities": city_rows,
 	}
 
 
 func apply_snapshot(data: Dictionary) -> bool:
-	if int(data.get("version", 0)) != 2 or not data.has("cities"):
+	# 先整份检查，再写入。半截档、缺字段、城池行被截断时直接失败，不改当前局面，也不再按缺失键取值（那会 SCRIPT ERROR）。
+	if typeof(data) != TYPE_DICTIONARY:
 		return false
+	var version: Variant = data.get("version", null)
+	if not _is_number(version) or (int(version) != 2 and int(version) != 3):
+		return false
+	var required: PackedStringArray = PackedStringArray([
+		"turn", "silver", "grain", "morale", "liaodong", "pressure", "worldline",
+		"yuan_status", "befriended_yuan", "yuan_city", "hold_city",
+		"main_done", "civil_done", "settled",
+		"s1_done", "s2_done", "s3_done",
+		"s1_choice", "s2_choice", "s3_choice",
+		"held_ningyuan", "loyalist_success", "pending_story", "ending_id", "log_text",
+		"cities",
+	])
+	for key in required:
+		if not data.has(key):
+			return false
+	var numbers: PackedStringArray = PackedStringArray([
+		"turn", "silver", "grain", "morale", "liaodong", "pressure", "worldline",
+	])
+	for key in numbers:
+		if not _is_number(data[key]):
+			return false
+	var flags: PackedStringArray = PackedStringArray([
+		"befriended_yuan", "main_done", "civil_done", "settled",
+		"s1_done", "s2_done", "s3_done", "held_ningyuan", "loyalist_success",
+	])
+	for key in flags:
+		if typeof(data[key]) != TYPE_BOOL and not _is_number(data[key]):
+			return false
+	if typeof(data["cities"]) != TYPE_ARRAY:
+		return false
+	var rows: Array = data["cities"]
+	var parsed: Dictionary = {}
+	for row in rows:
+		if typeof(row) != TYPE_DICTIONARY:
+			return false
+		if not row.has("id") or not row.has("faction") or not row.has("troops"):
+			return false
+		if not _is_number(row["troops"]):
+			return false
+		var id := str(row["id"])
+		if id == "" or not cities.has(id) or parsed.has(id):
+			return false
+		var faction := str(row["faction"])
+		if faction != "明" and faction != "后金":
+			return false
+		parsed[id] = {"faction": faction, "troops": maxi(0, int(row["troops"]))}
+	if parsed.size() != 6:
+		return false
+	var next_guide_done := guide_done
+	var next_guide_step := guide_step
+	if data.has("guide_done") and typeof(data["guide_done"]) == TYPE_BOOL:
+		next_guide_done = bool(data["guide_done"])
+		next_guide_step = 3 if next_guide_done else 0
+		if data.has("guide_step") and _is_number(data["guide_step"]):
+			next_guide_step = clampi(int(data["guide_step"]), 0, 3)
+	elif data.has("guide_step") and _is_number(data["guide_step"]):
+		next_guide_step = clampi(int(data["guide_step"]), 0, 3)
+		next_guide_done = next_guide_step >= 3
 	turn = int(data["turn"])
 	silver = int(data["silver"])
 	grain = int(data["grain"])
@@ -511,13 +581,67 @@ func apply_snapshot(data: Dictionary) -> bool:
 	pending_story = str(data["pending_story"])
 	ending_id = str(data["ending_id"])
 	log_text = str(data["log_text"])
-	for row in data["cities"]:
-		var info := city(str(row["id"]))
-		if info.is_empty():
-			return false
-		info["faction"] = str(row["faction"])
-		info["troops"] = int(row["troops"])
+	guide_done = next_guide_done
+	guide_step = next_guide_step
+	for id in parsed:
+		var info: Dictionary = cities[id]
+		info["faction"] = str(parsed[id]["faction"])
+		info["troops"] = int(parsed[id]["troops"])
 	return true
+
+
+func guide_disk_dismissed() -> bool:
+	if not FileAccess.file_exists(GUIDE_PATH):
+		return false
+	var file := FileAccess.open(GUIDE_PATH, FileAccess.READ)
+	if file == null:
+		return false
+	var parser := JSON.new()
+	if parser.parse(file.get_as_text()) != OK:
+		return false
+	var parsed: Variant = parser.data
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return false
+	if typeof(parsed.get("dismissed", null)) != TYPE_BOOL:
+		return false
+	return bool(parsed["dismissed"])
+
+
+func guide_note_city() -> void:
+	if guide_done or guide_step != 0:
+		return
+	guide_step = 1
+
+
+func guide_note_action() -> void:
+	if guide_done or guide_step != 1:
+		return
+	guide_step = 2
+
+
+func guide_note_end() -> void:
+	if guide_done:
+		return
+	guide_step = 3
+	guide_done = true
+	_write_guide_disk()
+
+
+func guide_skip() -> void:
+	guide_step = 3
+	guide_done = true
+	_write_guide_disk()
+
+
+func _write_guide_disk() -> void:
+	var file := FileAccess.open(GUIDE_PATH, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(JSON.stringify({"dismissed": true}))
+
+
+func _is_number(value: Variant) -> bool:
+	return typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT
 
 
 func _begin_settlement(prefix: String) -> Dictionary:

@@ -59,20 +59,18 @@ func _expect(label: String, kind: String, bgm: Node) -> void:
 	if player == null:
 		_fail("%s 没有 %s 播放器" % [label, kind])
 		return
-	var stream := player.stream as AudioStreamWAV
-	var bytes := stream.data.size() if stream != null else 0
+	var stream := player.stream
+	var length := stream.get_length() if stream != null else 0.0
 	print(
-		"BGM_CHECK %s mode=%s playing=%s vol=%.1f bytes=%d type=%s"
-		% [label, kind, player.playing, player.volume_db, bytes, player.playback_type]
+		"BGM_CHECK %s mode=%s playing=%s vol=%.1f len=%.1f type=%s class=%s"
+		% [label, kind, player.playing, player.volume_db, length, player.playback_type, stream.get_class() if stream != null else "null"]
 	)
 	if not player.playing:
 		_fail("%s 的 %s 播放器没有 playing" % [label, kind])
 	if player.volume_db <= -60.0:
 		_fail("%s 的 %s 音量 %.1f dB，没有高于 -60 dB" % [label, kind, player.volume_db])
-	if stream == null or stream.data.is_empty() or not _wav_has_samples(stream):
-		_fail("%s 的 %s 流是空的" % [label, kind])
-	elif stream.loop_mode != AudioStreamWAV.LOOP_FORWARD or stream.loop_end <= stream.loop_begin:
-		_fail("%s 的 %s 没有向前循环" % [label, kind])
+	if not _stream_ok(stream):
+		_fail("%s 的 %s 不是可循环的 OGG 曲目" % [label, kind])
 	if player.playback_type != AudioServer.PLAYBACK_TYPE_STREAM:
 		_fail("%s 的 %s 仍是 Sample 播放，macOS CoreAudio 会丢声" % [label, kind])
 
@@ -108,17 +106,11 @@ func _check_mute(bgm: Node) -> void:
 		_fail("取消静音后 BGM 总线仍是静音")
 
 
-func _wav_has_samples(stream: AudioStreamWAV) -> bool:
-	var size := stream.data.size()
-	if size < 4:
+func _stream_ok(stream: AudioStream) -> bool:
+	if stream == null or not (stream is AudioStreamOggVorbis):
 		return false
-	var step := maxi(2, (size / 2) / 32 * 2)
-	var i := 0
-	while i + 1 < size:
-		if stream.data.decode_s16(i) != 0:
-			return true
-		i += step
-	return false
+	var ogg := stream as AudioStreamOggVorbis
+	return ogg.get_length() > 1.0 and ogg.loop
 
 
 func _wait_sec(seconds: float) -> void:

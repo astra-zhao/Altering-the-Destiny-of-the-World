@@ -4,6 +4,8 @@ extends Control
 
 func _ready() -> void:
 	Bgm.set_mode("ending")
+	if has_node("/root/Fade"):
+		get_node("/root/Fade").fade_in()
 	if Campaign.ending_id == "":
 		Campaign.ending_id = Campaign.resolve_ending()
 	_build()
@@ -71,6 +73,12 @@ func _build() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	column.add_child(row)
+	var credit := Label.new()
+	credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	credit.add_theme_color_override("font_color", Color(0.7, 0.66, 0.58))
+	credit.text = "音乐（CC0）：Lotus Pond、Dragon Dance — BiteMe Games；Orien — Tozan；Floating Lanterns — John Bartmann。字体：文泉驿微米黑（Apache-2.0）。"
+	column.add_child(credit)
+
 	var back := Button.new()
 	back.text = "回到大地图"
 	back.pressed.connect(_back_to_map)
