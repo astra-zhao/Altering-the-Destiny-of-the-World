@@ -20,6 +20,13 @@ func _run() -> void:
 	await _settle()
 	_lift_fade()
 	await _shot("title")
+	var bgm := root.get_node("Bgm")
+	bgm.set_master_linear(0.7)
+	title.open_settings()
+	await _settle()
+	_lift_fade()
+	await _shot("settings")
+	title._close_settings()
 	title.open_clear_confirm()
 	await _settle()
 	_lift_fade()
@@ -156,14 +163,15 @@ func _write_manifest() -> void:
 	lines.append("  \"shots\": [")
 	var names := [
 		"title",
-		"confirm-clear",
-		"confirm-reset",
-		"title-continue-disabled",
 		"prologue-1",
 		"prologue-2",
 		"prologue-3",
+		"settings",
+		"confirm-clear",
+		"confirm-reset",
 		"s1-start",
 		"map-after-s1",
+		"title-continue-disabled",
 	]
 	for i in names.size():
 		var comma := "," if i < names.size() - 1 else ""
