@@ -1663,15 +1663,11 @@ func _on_load() -> void:
 
 
 func _on_new_game() -> void:
-	Campaign.reset()
-	_selected_id = ""
-	_pick = ""
-	if _battle != null:
-		_battle.hide()
-	_in_battle = false
-	Bgm.set_mode("map")
-	_refresh()
-	_show_note("新的一局。旧档还在，要读才会回来。")
+	# 新局先登基夜，跳过序章。磁盘上的旧档先留着，和以前一样，要读才会回来。
+	Campaign.begin_new_game_in_memory()
+	Campaign.arm_skip_guard()
+	Bgm.set_mode("story")
+	get_tree().change_scene_to_file("res://scenes/s1_night.tscn")
 
 
 func _on_volume(value: float) -> void:

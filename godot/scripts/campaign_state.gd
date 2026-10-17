@@ -39,6 +39,9 @@ var cities: Dictionary = {}
 
 const SAVE_PATH := "user://campaign_m2.json"
 const GUIDE_PATH := "user://v03_guide.json"
+## 上一幕的鼠标或跳过键还按着时，下一幕先吃掉松开。一次按键只过一段。
+var _block_mouse := false
+var _block_skip_key := false
 
 
 func _ready() -> void:
@@ -75,6 +78,8 @@ func reset() -> void:
 	log_text = "第 1 回合。先点一座我方的城。"
 	guide_step = 0
 	guide_done = false
+	_block_mouse = false
+	_block_skip_key = false
 	if guide_disk_dismissed():
 		guide_done = true
 		guide_step = 3
@@ -240,6 +245,7 @@ func end_turn() -> Dictionary:
 	main_done = false
 	civil_done = false
 	log_text = "%s进入第 %d 回合。" % [ai_line, turn]
+	# 新局在第 1 回合开始前已经写过登基夜。这里只留给还没写回的旧档（例如第 2 回合 pending 仍是 s1）。
 	if not s1_done and turn <= 3:
 		pending_story = "s1"
 		return {"ok": true, "goto": "s1", "message": log_text}
@@ -603,6 +609,82 @@ func apply_snapshot(data: Dictionary) -> bool:
 	return true
 
 
+func has_campaign_save() -> bool:
+	return FileAccess.file_exists(SAVE_PATH)
+
+
+## 标题「开始游戏」和结局「再来一局」用。局面回到开局，并记一笔「登基夜还没写」。
+func prepare_fresh_campaign() -> Dictionary:
+	reset()
+	pending_story = "s1"
+	return save_game()
+
+
+## 地图上的「新局」用。不覆盖已经在磁盘上的旧档。
+func begin_new_game_in_memory() -> void:
+	reset()
+	pending_story = "s1"
+
+
+func resume_scene() -> String:
+	if pending_story == "s1":
+		return "res://scenes/s1_night.tscn"
+	if pending_story == "s2":
+		return "res://scenes/s2_yuan.tscn"
+	if pending_story == "s3":
+		return "res://scenes/s3_crisis.tscn"
+	if settled and ending_id != "" and not skip_ending_scene:
+		return "res://scenes/ending.tscn"
+	return "res://scenes/big_map.tscn"
+
+
+## 只删战役档和引导标记。音量、帮我选偏好不动。
+func clear_campaign_files() -> void:
+	_remove_user_file(SAVE_PATH)
+	_remove_user_file(GUIDE_PATH)
+	guide_done = false
+	guide_step = 0
+
+
+## 只删引导标记。战役里的回合和城池不动，引导进度改成未看过，下次进大地图会再出现。
+func reset_guide_record() -> void:
+	_remove_user_file(GUIDE_PATH)
+	guide_done = false
+	guide_step = 0
+	_patch_save_guide(false, 0)
+
+
+func arm_skip_guard() -> void:
+	_block_mouse = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_block_skip_key = _skip_key_held()
+
+
+func release_skip_guard_if_idle() -> void:
+	if _block_mouse and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_block_mouse = false
+	if _block_skip_key and not _skip_key_held():
+		_block_skip_key = false
+
+
+func swallow_skip_guard(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index != MOUSE_BUTTON_LEFT or not _block_mouse:
+			return false
+		if not mouse.pressed:
+			_block_mouse = false
+		return true
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if not _is_skip_key(key.keycode) or not _block_skip_key:
+			return false
+		if key.echo or key.pressed:
+			return true
+		_block_skip_key = false
+		return true
+	return false
+
+
 func guide_disk_dismissed() -> bool:
 	if not FileAccess.file_exists(GUIDE_PATH):
 		return false
@@ -646,6 +728,37 @@ func guide_skip() -> void:
 	guide_step = 3
 	guide_done = true
 	_write_guide_disk()
+
+
+func _remove_user_file(path: String) -> void:
+	if not FileAccess.file_exists(path):
+		return
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func _patch_save_guide(done: bool, step: int) -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	parsed["guide_done"] = done
+	parsed["guide_step"] = step
+	var out := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if out == null:
+		return
+	out.store_string(JSON.stringify(parsed))
+
+
+func _skip_key_held() -> bool:
+	return Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER) or Input.is_key_pressed(KEY_ESCAPE)
+
+
+func _is_skip_key(code: Key) -> bool:
+	return code == KEY_SPACE or code == KEY_ENTER or code == KEY_KP_ENTER or code == KEY_ESCAPE
 
 
 func _write_guide_disk() -> void:

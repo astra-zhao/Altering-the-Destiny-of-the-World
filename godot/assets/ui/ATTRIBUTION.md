@@ -15,7 +15,7 @@
 | NotoSerifSC-Bold.otf / .woff2 | Noto Serif CJK SC Bold（与思源宋体同源设计） | SIL OFL 1.1，见 OFL.txt |
 | NotoSansSC-Regular.otf / .woff2 | Noto Sans CJK SC Regular（与思源黑体同源设计） | 同上 |
 | NotoSansSC-Bold.otf / .woff2 | Noto Sans CJK SC Bold | 同上 |
-- 当前 otf / woff2 是 969 字子集，覆盖界面用字，包含「差」，以及全部可打印 ASCII（U+0020–U+007E，含半角 `=`）、→、≥、≤ 和全角空格。完整字表是同目录 `charset_used.txt`。字体里没有 ✗，界面用 `icon_cross_32.png`。
+- 当前 otf / woff2 是 985 字子集，覆盖界面用字，包含「差」，以及序章、副标和确认框用到的「七书党十宗岁年旱熹陕凉删役末苍除」，另有全部可打印 ASCII（U+0020–U+007E，含半角 `=`）、→、≥、≤ 和全角空格。完整字表是同目录 `charset_used.txt`。字体里没有 ✗，界面用 `icon_cross_32.png`。
 - Godot 工程只加载三份 `.otf`。`.woff2` 是同子集的 H5 备用副本，导出预设排除 `*.woff2`，避免和 otf 一起打进 Godot 包。
 - 子集化属于 OFL 允许的修改版；因本包不使用保留字体名 "Source"，文件名用 Noto。
 
@@ -27,7 +27,13 @@
 - 来源：GenerateImage（AI 生成），2026-10-16。提示词：「晚明皇家宝座大殿背墙，朱漆金雕云龙，正面正投影」。之后做了裁切，并在上缘 150px、左右缘 170px 羽化，下缘不羽化。
 - 不是自行绘制，也不是购买素材。不能当成没有版权风险。上架前要和手绘氛围图一起复核。
 
-## 五、游戏内 Credits 建议文案
+## 五、标题页与序章底图（v1.4）
+- 文件：`bg_story_s1.jpg`（1280×720）。标题页和序章共用。
+- 来源：Alice《UI v1.4-title》（2026-10-17）复用的 v1.3 登基夜氛围底 `bg_story_s1.jpg`。该包里的原图是指向 v1.3 的符号链接，没有随 zip 进来。游戏里这一张是从标题页、序章成稿去掉说明里的遮罩后拼回的；菜单挡住的中部按左右两侧殿堂颜色补过，不是新调用 GenerateImage。
+- 序章文字框用已有 `panel_frame_l.png`（说明里的 `frame_ornate.png`，九宫格边距 26）。按钮是色值，不是新切图。
+- 授权状态与第一节手绘氛围图相同。上架前要复核，不能写成没有版权风险。
+
+## 六、游戏内 Credits 建议文案
 - 字体：Noto Serif/Sans CJK SC（SIL OFL 1.1）
 - 配乐：Floating Lanterns · John Bartmann · CC0
 - 美术：AI 辅助生成（Grok Bot，2026-10-15），后期由 Alice 处理
