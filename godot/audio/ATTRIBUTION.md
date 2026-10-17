@@ -19,8 +19,12 @@ itch 页面写的是 Creative Commons Zero，商业可用、不要求署名，�
 
 手绘类图像（面板、城印、印章、图标、谋士头像、卷轴、三张背景）由 Grok Bot 内置图像生成在 **2026-10-15** 生成，Alice 再用 PIL 做抠图、缩放、九宫格和状态着色。没有混入第三方贴图。版权归属和各平台对 AI 素材的披露要求，上架前再统一核对。
 
-字体是 Noto Serif CJK SC Bold、Noto Sans CJK SC Regular / Bold 的 959 字子集（含全部可打印 ASCII 和半角 `=`，SIL OFL 1.1），文件在 `assets/ui/`，许可全文是 `assets/ui/OFL.txt`。Godot 用 otf，woff2 不进 Godot 包。
+字体是 Noto Serif CJK SC Bold、Noto Sans CJK SC Regular / Bold 的 969 字子集（含「差」、全部可打印 ASCII 和半角 `=`，SIL OFL 1.1），文件在 `assets/ui/`，许可全文是 `assets/ui/OFL.txt`。Godot 用 otf，woff2 不进 Godot 包。
 
 切图清单、边距和这份说明的细目也在 `assets/ui/README-切图清单.md`、`assets/ui/ATTRIBUTION.md`。
 
 结局页底部署名只用结局曲：配乐：Floating Lanterns · John Bartmann · CC0。地图里的「署名」写全四首、字体和上述美术来源。
+
+## S1 殿内环境声
+
+`audio/s1/hall.ogg` 是本工程用 ffmpeg 合成的 6 秒棕噪声循环，不是第三方曲目，不替换上面四条 BGM。S1 里以 -24 dB 叠在剧情曲下面。导入保持 Loop。

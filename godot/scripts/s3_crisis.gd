@@ -2,10 +2,12 @@ extends Node3D
 ## S3 京师危机。城头与远处烽火，写回后回地图，再结束一回合就结算。
 
 const Kit := preload("res://scripts/story_kit.gd")
+const StoryBoard := preload("res://scripts/story_board.gd")
 
 var _camera: Camera3D
 var _choices: VBoxContainer
 var _sub: Label
+var _layer: CanvasLayer
 
 
 func _ready() -> void:
@@ -29,9 +31,25 @@ func _on_push(weight: float) -> void:
 
 
 func _reveal() -> void:
+	_choices.visible = false
+	var old := _choices.get_parent().get_parent() as CanvasItem
+	if old != null:
+		old.visible = false
+	if _layer.get_node_or_null("StoryBoard") != null:
+		return
 	var ok := Campaign.liaodong >= 55 and Campaign.pressure <= 45
-	_sub.text = "烽火在远处。勤王此刻%s。" % ("能成" if ok else "还不成（要辽东≥55且压力≤45）")
-	_choices.visible = true
+	StoryBoard.mount(_layer, {
+		"which": "s3",
+		"kicker": "剧情 3/3",
+		"title": "京师危机",
+		"sub": "烽火在远处。勤王此刻%s。" % ("能成" if ok else "还不成，要辽东 ≥ 55 且压力 ≤ 45"),
+		"on_choose": _choose,
+		"choices": [
+			{"id": "A", "title": "倾国勤王", "parts": [{"text": "压力 -8", "kind": "gain"}, {"text": "世界线 +5", "kind": "world"}, {"text": "不成则民心 -3", "kind": "cost"}]},
+			{"id": "B", "title": "固守待变", "parts": [{"text": "民心 +6", "kind": "gain"}, {"text": "辽东 +3", "kind": "gain"}, {"text": "世界线 +4", "kind": "world"}]},
+			{"id": "C", "title": "开海税", "parts": [{"text": "银两 +20", "kind": "gain"}, {"text": "民心 -8", "kind": "cost"}, {"text": "世界线 +10", "kind": "world"}]},
+		],
+	})
 
 
 func _choose(choice_id: String) -> void:
@@ -74,8 +92,9 @@ func _build_world() -> void:
 
 
 func _build_ui() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
+	_layer = CanvasLayer.new()
+	add_child(_layer)
+	var layer := _layer
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE

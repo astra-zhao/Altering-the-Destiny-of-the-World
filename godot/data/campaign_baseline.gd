@@ -4,7 +4,9 @@ extends RefCounted
 ## 邻接：京师—保定—大同；保定—宁远—锦州—沈阳；大同—宁远为远邻。
 
 const TURN := 1
-const TURN_LIMIT := 10
+## 玩家实际能打完的最后一回合。第 7 回合结束进入京师危机，第 8 回合结束结算。
+## 旧的「第 10 回合超时」到不了，已去掉，不要再拿它当终局。
+const PLAY_TURNS := 8
 
 ## 袁崇焕可取：前线可用 / 闲置 / 已死 / 京营。M0 固定显示默认值。
 const YUAN_STATUSES: PackedStringArray = ["前线可用", "闲置", "已死", "京营"]

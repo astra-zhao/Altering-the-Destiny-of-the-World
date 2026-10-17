@@ -14,7 +14,7 @@
 
 第一次会生成 `godot/.godot/`，已写入仓库 `.gitignore`。
 
-界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，959 字子集，含全部可打印 ASCII U+0020–U+007E 和半角 `=`，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。Godot 只引用三份 `.otf`（`scripts/ui_kit.gd` 和主题）。同名 `.woff2` 留在仓库里给 H5，`web/` 仍用系统字体族名，没有引用这些文件。macOS 导出预设排除 `*.woff2`，包里只有 otf。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
+界面文字用切图包里的 Noto Serif SC Bold、Noto Sans SC Regular / Bold（`assets/ui/`，969 字子集，含「差」以及预判、预警、判定清单用字，另含全部可打印 ASCII U+0020–U+007E 和半角 `=`，SIL OFL 1.1，见同目录 `OFL.txt`）。主题 `theme/main_theme.tres` 指向同一份 Noto Sans。Godot 只引用三份 `.otf`（`scripts/ui_kit.gd` 和主题）。同名 `.woff2` 留在仓库里给 H5，`web/` 仍用系统字体族名，没有引用这些文件。macOS 导出预设排除 `*.woff2`，包里只有 otf。`uid_cache.bin` 虽是强制导出，里面的 qa、检查脚本和 woff2 路径会在打包时去掉。地图、城印、卡片、印章都是 `assets/ui/` 里的切图，文字是字体节点叠在图上。
 
 ## 怎么玩
 
@@ -130,7 +130,7 @@ BiteMe 的页面还写了 “You cannot resell this edit.” 这两首只作为�
    - 开局从宁远攻锦州会占城（18 兵对 10 兵，又有袁部）。
 3. **固守**：选中的明军城本回合防御 ×1.3，不移动。
 4. **内政**：征粮 = 粮 +8、民心 −4；发帑 = 银 −6、民心 +6；练兵 = 银 −5、粮 −4、选中明军城兵力 +4。银粮不够则不扣。
-5. **结束回合**：必须先有主行动。然后后金行动，回合 +1，上限 10。
+5. **结束回合**：必须先有主行动。然后后金行动，回合 +1。顶栏显示「当前 / 8」。第 7 回合结束进入京师危机，第 8 回合结束结算。
    - 后金压力 ≥60：从邻城打锦州，锦州已在后金手里就打宁远。
    - 否则看「回合 + 后金压力」：偶数则沈阳兵力 +4，奇数按兵不动。开局压力 50，第 1 回合结束是按兵。
 6. **登基夜**：第 1 回合结束后进入。低模 3D 夜殿，镜头从殿门推到御座前，推完才出现 A/B/C。BGM 换成剧情轨。
@@ -142,7 +142,7 @@ BiteMe 的页面还写了 “You cannot resell this edit.” 这两首只作为�
 
 - **S2** 在进入第 4、5、6 回合时出现，满足其一即可：曾经由明军控制过宁远（开局算）、辽东稳固 ≤35、或第 6 回合的边报。
 - **S3** 在 S2 已写回之后出现：进入第 8 回合，或京师易手、或保定被后金占了。
-- S3 写回后回到地图，还可以再打 **1** 个策略回合。这个回合结束就结算。第 10 回合结束若还没结算，按同一套优先级强制结算。
+- S3 写回后回到地图，还可以再打 **1** 个策略回合。这个回合结束就结算。正常流程停在第 8 回合，没有第 10 回合超时。
 
 | S2 | 结果 |
 | --- | --- |
@@ -197,7 +197,7 @@ cd godot
 
 | 路径 | 作用 |
 | --- | --- |
-| `project.godot` | 工程入口，4.6 / Forward Plus，版本 0.3.0 |
+| `project.godot` | 工程入口，4.6 / Forward Plus，版本 0.3.1 |
 | `audio/tracks/*.ogg` | 地图、简战、剧情、结局。同名替换 |
 | `audio/ATTRIBUTION.md` | 四首的授权页面 |
 | `scripts/bgm.gd` | 四轨 Stream 循环，静音走 BGM 总线，主音量走 Master |
@@ -208,6 +208,6 @@ cd godot
 | `scripts/advisor_smoke.gd` | 只点第一条推荐，直到结局甲 |
 | `scripts/big_map.gd` | 大地图、引导、内政卡、简战浮层 |
 | `scripts/campaign_state.gd` | 回合、简战、S1–S3 写回、结局、存档 |
-| `assets/ui/NotoSansSC-Regular.otf` 等 | 界面字体 959 字子集（含 ASCII 与 `=`）。Godot 用 otf；woff2 不进 macOS 包。SIL OFL 1.1，许可见 `assets/ui/OFL.txt` |
+| `assets/ui/NotoSansSC-Regular.otf` 等 | 界面字体 969 字子集（含「差」、ASCII 与 `=`）。Godot 用 otf；woff2 不进 macOS 包。SIL OFL 1.1，许可见 `assets/ui/OFL.txt` |
 | `export_presets.cfg` | macOS universal 导出预设 |
 | `data/campaign_baseline.gd` | 六城、邻接、初值、消耗 |

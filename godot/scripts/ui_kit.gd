@@ -150,11 +150,11 @@ static func seal_button(prefix: String) -> TextureButton:
 	return button
 
 
-static func paint_seal(button: TextureButton, prefix: String, picked: bool, hovering: bool = false) -> void:
+static func paint_seal(button: TextureButton, prefix: String, picked: bool, hovering: bool = false, locked: bool = false) -> void:
 	button.modulate = Color.WHITE
 	button.self_modulate = Color.WHITE
 	var face := "normal"
-	if button.disabled:
+	if locked or button.disabled:
 		face = "disabled"
 	elif picked:
 		face = "selected"
@@ -162,7 +162,7 @@ static func paint_seal(button: TextureButton, prefix: String, picked: bool, hove
 		face = "hover"
 	var hover_face := "selected" if picked else "hover"
 	var pressed_face := "selected" if picked else "pressed"
-	if button.disabled:
+	if locked or button.disabled:
 		hover_face = "disabled"
 		pressed_face = "disabled"
 	button.texture_normal = tex("%s_%s.png" % [prefix, face])

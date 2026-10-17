@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c7v031shots"]
+
+[ext_resource type="Script" path="res://scripts/qa_v031_shots.gd" id="1_shots"]
+
+[node name="V031Shots" type="Node"]
+script = ExtResource("1_shots")

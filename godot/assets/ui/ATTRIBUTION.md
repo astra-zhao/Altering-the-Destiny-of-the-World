@@ -15,14 +15,19 @@
 | NotoSerifSC-Bold.otf / .woff2 | Noto Serif CJK SC Bold（与思源宋体同源设计） | SIL OFL 1.1，见 OFL.txt |
 | NotoSansSC-Regular.otf / .woff2 | Noto Sans CJK SC Regular（与思源黑体同源设计） | 同上 |
 | NotoSansSC-Bold.otf / .woff2 | Noto Sans CJK SC Bold | 同上 |
-- 当前 otf / woff2 是 959 字子集，覆盖原先界面用字，并包含全部可打印 ASCII（U+0020–U+007E，含半角 `=`）以及 →、≥、≤ 和全角空格。`charset_used.txt` 仍是早期 540 字清单，不是这版子集的完整字表。
+- 当前 otf / woff2 是 969 字子集，覆盖界面用字，包含「差」，以及全部可打印 ASCII（U+0020–U+007E，含半角 `=`）、→、≥、≤ 和全角空格。完整字表是同目录 `charset_used.txt`。字体里没有 ✗，界面用 `icon_cross_32.png`。
 - Godot 工程只加载三份 `.otf`。`.woff2` 是同子集的 H5 备用副本，导出预设排除 `*.woff2`，避免和 otf 一起打进 Godot 包。
 - 子集化属于 OFL 允许的修改版；因本包不使用保留字体名 "Source"，文件名用 Noto。
 
 ## 三、配乐
 - Floating Lanterns · John Bartmann · CC0（结局页底部署名，原文：「配乐：Floating Lanterns · John Bartmann · CC0」）。
 
-## 四、游戏内 Credits 建议文案
+## 四、S1 龙椅背墙贴片
+- 文件：`assets/s1/throne_backwall.png`（1024×802，RGBA）。进包只有这一张；原图和叠合预览不进包。
+- 来源：GenerateImage（AI 生成），2026-10-16。提示词：「晚明皇家宝座大殿背墙，朱漆金雕云龙，正面正投影」。之后做了裁切，并在上缘 150px、左右缘 170px 羽化，下缘不羽化。
+- 不是自行绘制，也不是购买素材。不能当成没有版权风险。上架前要和手绘氛围图一起复核。
+
+## 五、游戏内 Credits 建议文案
 - 字体：Noto Serif/Sans CJK SC（SIL OFL 1.1）
 - 配乐：Floating Lanterns · John Bartmann · CC0
 - 美术：AI 辅助生成（Grok Bot，2026-10-15），后期由 Alice 处理
