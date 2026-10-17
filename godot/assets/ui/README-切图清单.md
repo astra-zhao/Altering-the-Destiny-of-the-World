@@ -32,7 +32,7 @@ icon_{grain,silver,lianbing,march,siege,hold,minxin,liaodong,pressure,turn,volum
 bg_map_liaodong.jpg / bg_battle_banners.jpg / bg_ending_night.jpg（1280×720）。ending_scroll.png 1144×682：结局卷轴，纸面区域约 x 4%–96%、y 9%–69%，下卷轴杆 y 70%–76%；按钮放在卷轴下方。
 
 ## 字体
-NotoSerifSC-Bold、NotoSansSC-Regular、NotoSansSC-Bold（.otf 给 Godot，.woff2 给 H5）。当前文件是 969 字子集，含「差」、全部可打印 ASCII 和半角 `=`。字表见 `charset_used.txt`。Godot 只引用 otf；woff2 不进 Godot 导出包。
+NotoSerifSC-Bold、NotoSansSC-Regular、NotoSansSC-Bold（.otf 给 Godot，.woff2 给 H5）。当前文件是 985 字子集，含「差」、序章和确认框用字，以及全部可打印 ASCII 和半角 `=`。字表见 `charset_used.txt`。Godot 只引用 otf；woff2 不进 Godot 导出包。
 推荐字号：标题 Serif Bold 32–46；卡片名 Serif Bold 22–26；数字 Serif Bold 19–22；正文/说明 Sans Regular 15–18；名牌 Serif Bold 20。
 颜色：金 #D4A84B、近白 #F5EDE0、得 #9AD98A、失 #F0A27A、朱砂 #8B1E1E、警示 #E85D4C。
 

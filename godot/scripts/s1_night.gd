@@ -26,6 +26,8 @@ const _ASH_AMOUNT := 90
 const _DUST_AMOUNT := 80
 const _PREBUILD_AT := 2.5
 
+@export var backdrop_only := false
+
 @onready var _camera: Camera3D = $Camera3D
 @onready var _choices: Control = $UI/Layout/Column/Choices
 
@@ -58,6 +60,10 @@ var _skip_wall := 0
 
 
 func _ready() -> void:
+	if backdrop_only:
+		_ready_backdrop()
+		return
+	Campaign.release_skip_guard_if_idle()
 	var started := Time.get_ticks_usec()
 	UiKit.boot()
 	_preload_story_textures()
@@ -100,6 +106,25 @@ func _ready() -> void:
 	_warm_started = Time.get_ticks_usec()
 	_warm_left = 2
 	print("S1_WARM_ARMED lights=%d glows=%d ash=%d dust=%d board=%s hint=%s" % [_count_lights(), _glow_count, _ASH_AMOUNT, _DUST_AMOUNT, _board != null, _skip_hint != null])
+
+
+func _ready_backdrop() -> void:
+	set_process_unhandled_input(false)
+	_clear_old_hall()
+	_build_hall()
+	_build_lights()
+	_build_atmosphere()
+	var layout := get_node_or_null("UI/Layout") as CanvasItem
+	if layout != null:
+		layout.visible = false
+	_camera.position = _CAM_END
+	_camera.fov = _FOV
+	_camera.rotation_degrees = Vector3(_PITCH, 0, 0)
+	_camera.near = 0.06
+	_camera.far = 80.0
+	_push_done = true
+	_warm_left = 0
+	_choices.visible = false
 
 
 func _exit_tree() -> void:
@@ -195,7 +220,10 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _push_done or _skipping:
+	if backdrop_only or _push_done or _skipping:
+		return
+	if Campaign.swallow_skip_guard(event):
+		get_viewport().set_input_as_handled()
 		return
 	if _warm_left > 0 and _is_skip_event(event):
 		_skip_queued = true
@@ -680,6 +708,8 @@ func _choose(choice_id: String) -> void:
 	var result: Dictionary = Campaign.apply_s1(choice_id)
 	if not bool(result.get("ok", false)):
 		return
+	# 新局在进登基夜前就存过「还没选」。选完再存一次，继续才不会把这一夜再放一遍。
+	Campaign.save_game()
 	Bgm.set_mode("map")
 	get_tree().change_scene_to_file("res://scenes/big_map.tscn")
 

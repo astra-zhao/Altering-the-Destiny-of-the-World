@@ -129,10 +129,14 @@ func _build() -> void:
 	_buttons.add_theme_constant_override("separation", 16)
 	_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(_buttons)
-	var again := UiKit.painted_button("再来一局", true, 200)
+	var again := UiKit.painted_button("再来一局", true, 180)
 	again.pressed.connect(_new_game)
 	_buttons.add_child(again)
-	var back := UiKit.painted_button("回到大地图", false, 220)
+	var title := UiKit.painted_button("回到标题", false, 180)
+	title.name = "BackToTitle"
+	title.pressed.connect(_back_to_title)
+	_buttons.add_child(title)
+	var back := UiKit.painted_button("回到大地图", false, 200)
 	back.pressed.connect(_back_to_map)
 	_buttons.add_child(back)
 
@@ -483,7 +487,13 @@ func _back_to_map() -> void:
 	get_tree().change_scene_to_file("res://scenes/big_map.tscn")
 
 
+func _back_to_title() -> void:
+	Bgm.set_mode("story")
+	get_tree().change_scene_to_file("res://scenes/title_screen.tscn")
+
+
 func _new_game() -> void:
-	Campaign.reset()
-	Bgm.set_mode("map")
-	get_tree().change_scene_to_file("res://scenes/big_map.tscn")
+	Campaign.prepare_fresh_campaign()
+	Campaign.arm_skip_guard()
+	Bgm.set_mode("story")
+	get_tree().change_scene_to_file("res://scenes/s1_night.tscn")
