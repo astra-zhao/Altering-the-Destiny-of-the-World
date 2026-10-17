@@ -1,5 +1,5 @@
 extends Node
-## 三条循环：地图低音、简战鼓点、登基夜高音。做成 WAV 循环，避免 AudioStreamGeneratorPlayback 在退出时泄漏。静音关的是 BGM 总线，三条一起哑。
+## 四条循环：地图、简战、剧情、结局。WAV sample，静音关 BGM 总线。
 
 var muted := false
 var mode := "map"
@@ -18,6 +18,7 @@ func _ready() -> void:
 	_players["map"] = _make_player(_wav("map"), _ACTIVE_DB)
 	_players["battle"] = _make_player(_wav("battle"), _IDLE_DB)
 	_players["story"] = _make_player(_wav("story"), _IDLE_DB)
+	_players["ending"] = _make_player(_wav("ending"), _IDLE_DB)
 	# Dummy 驱动播不了 sample，而且本来就没有声卡。真驱动用 sample，停止时会马上释放，退出才不会报播放泄漏。
 	if AudioServer.get_driver_name() != "Dummy":
 		for key in _players:
@@ -114,5 +115,8 @@ func _tone(kind: String, t: float) -> float:
 	if kind == "story":
 		var lfo := 0.72 + 0.28 * sin(t * TAU * 0.2)
 		return (sin(TAU * 247.0 * t) * 0.11 + sin(TAU * 330.0 * t) * 0.05) * lfo
+	if kind == "ending":
+		var end_lfo := 0.55 + 0.45 * sin(t * TAU * 0.12)
+		return (sin(TAU * 98.0 * t) * 0.12 + sin(TAU * 146.0 * t) * 0.05) * end_lfo
 	var map_lfo := 0.62 + 0.38 * sin(t * TAU * 0.33)
 	return (sin(TAU * 110.0 * t) * 0.15 + sin(TAU * 165.0 * t) * 0.06) * map_lfo
