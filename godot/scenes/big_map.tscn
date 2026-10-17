@@ -58,7 +58,16 @@ text = "改命：天下"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 8
-text = "v0.2 · M0 空壳大地图"
+text = "v0.2 · M1 策略回合"
+
+[node name="HeaderSpacer" type="Control" parent="RootMargin/Columns/MapColumn/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MuteButton" type="Button" parent="RootMargin/Columns/MapColumn/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "静音"
 
 [node name="MapPanel" type="PanelContainer" parent="RootMargin/Columns/MapColumn"]
 unique_name_in_owner = true
@@ -94,7 +103,7 @@ mouse_filter = 1
 [node name="HintLabel" type="Label" parent="RootMargin/Columns/MapColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "示意邻接，不是实测地图。金钮为明，绛钮为后金，赭钮为争议；虚线为远邻。"
+text = "金钮明、绛钮后金、赭钮锦州。点城后选行军、攻城或固守。虚线是远邻，行军更耗粮。"
 autowrap_mode = 3
 
 [node name="SideColumn" type="VBoxContainer" parent="RootMargin/Columns"]
@@ -116,7 +125,7 @@ theme_override_constants/separation = 8
 [node name="HudHeading" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "局面 · 初值占位"
+text = "局面"
 
 [node name="HudGrid" type="GridContainer" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
 layout_mode = 2
@@ -196,6 +205,15 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "前线可用"
 
+[node name="BefriendName" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+layout_mode = 2
+text = "结交袁"
+
+[node name="BefriendLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox/HudGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "否"
+
 [node name="FactionLabel" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -204,7 +222,7 @@ text = "玩家 · 明　　后金 · AI"
 [node name="HudFoot" type="Label" parent="RootMargin/Columns/SideColumn/HudPanel/HudBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "只展示大纲初值。调兵、简战、后金 AI 与结局都未接入。"
+text = "主行动三选一。内政可跳过。结束回合后后金行动，再进入下一回合。"
 autowrap_mode = 3
 
 [node name="DetailPanel" type="PanelContainer" parent="RootMargin/Columns/SideColumn"]
@@ -228,13 +246,75 @@ size_flags_vertical = 3
 text = "点击地图上的城池，查看归属、备注与邻接。"
 autowrap_mode = 3
 
-[node name="StoryButton" type="Button" parent="RootMargin/Columns/SideColumn"]
+[node name="ActionPanel" type="VBoxContainer" parent="RootMargin/Columns/SideColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "切换→抉择→写回（M1 占位）"
+theme_override_constants/separation = 6
 
-[node name="StoryNote" type="Label" parent="RootMargin/Columns/SideColumn"]
+[node name="ActionHint" type="Label" parent="RootMargin/Columns/SideColumn/ActionPanel"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "M1 将在此接入：切换场景 → 抉择 → 写回。按下只说明流程，不改局面。"
+text = "点一座明军城，再选行军、攻城或固守。"
+autowrap_mode = 3
+
+[node name="MainRow" type="HBoxContainer" parent="RootMargin/Columns/SideColumn/ActionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MarchButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/MainRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "行军"
+
+[node name="AttackButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/MainRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "攻城"
+
+[node name="HoldButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/MainRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "固守"
+
+[node name="CivilRow" type="HBoxContainer" parent="RootMargin/Columns/SideColumn/ActionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LevyButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/CivilRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "征粮"
+
+[node name="SpendButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/CivilRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "发帑"
+
+[node name="TrainButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/CivilRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "练兵"
+
+[node name="SkipButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel/CivilRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "跳过"
+
+[node name="EndTurnButton" type="Button" parent="RootMargin/Columns/SideColumn/ActionPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "结束回合"
+
+[node name="LogLabel" type="Label" parent="RootMargin/Columns/SideColumn/ActionPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 52)
+text = "第 1 回合。点城，再选主行动。"
 autowrap_mode = 3

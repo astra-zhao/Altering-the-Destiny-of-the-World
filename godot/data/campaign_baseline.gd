@@ -1,5 +1,5 @@
 extends RefCounted
-## v0.2 策略大纲（2026-10-13）的 M0 设计基线。只读初值，不做回合模拟。
+## v0.2 策略大纲（2026-10-13）。城池、邻接、局面初值，以及 M1 的简单数值。
 ## 城池 6：C1 京师、C2 保定、C3 大同、C4 宁远、C5 沈阳、C6 锦州。
 ## 邻接：京师—保定—大同；保定—宁远—锦州—沈阳；大同—宁远为远邻。
 
@@ -24,14 +24,31 @@ const STATS: Array[Dictionary] = [
 ]
 
 ## pos 是地图内的示意坐标（0–1），不是经纬度。西在左，东北在右上。
+## troops 为初始兵力。锦州归属显示「争议」，交战时算后金。terrain_pct：100 = 守方 ×1.00。
 const CITIES: Array[Dictionary] = [
-	{"id": "C1", "name": "京师", "owner": "明", "note": "首都；失守易崩盘", "pos": Vector2(0.36, 0.52)},
-	{"id": "C2", "name": "保定", "owner": "明", "note": "", "pos": Vector2(0.30, 0.74)},
-	{"id": "C3", "name": "大同", "owner": "明", "note": "边镇", "pos": Vector2(0.15, 0.38)},
-	{"id": "C4", "name": "宁远", "owner": "明", "note": "袁系前线锚点", "pos": Vector2(0.55, 0.36)},
-	{"id": "C5", "name": "沈阳", "owner": "后金", "note": "敌方核心", "pos": Vector2(0.88, 0.16)},
-	{"id": "C6", "name": "锦州", "owner": "争议/后金压境", "note": "易触发战事", "pos": Vector2(0.72, 0.26)},
+	{"id": "C1", "name": "京师", "owner": "明", "faction": "明", "troops": 20, "terrain_pct": 110, "note": "首都；失守易崩盘", "pos": Vector2(0.36, 0.52)},
+	{"id": "C2", "name": "保定", "owner": "明", "faction": "明", "troops": 14, "terrain_pct": 100, "note": "", "pos": Vector2(0.30, 0.74)},
+	{"id": "C3", "name": "大同", "owner": "明", "faction": "明", "troops": 12, "terrain_pct": 115, "note": "边镇", "pos": Vector2(0.15, 0.38)},
+	{"id": "C4", "name": "宁远", "owner": "明", "faction": "明", "troops": 18, "terrain_pct": 120, "note": "袁系前线锚点", "pos": Vector2(0.55, 0.36)},
+	{"id": "C5", "name": "沈阳", "owner": "后金", "faction": "后金", "troops": 26, "terrain_pct": 110, "note": "敌方核心", "pos": Vector2(0.88, 0.16)},
+	{"id": "C6", "name": "锦州", "owner": "争议/后金压境", "faction": "后金", "troops": 10, "terrain_pct": 100, "note": "易触发战事", "pos": Vector2(0.72, 0.26)},
 ]
+
+const YUAN_CITY := "C4"
+const MARCH_GRAIN := 3
+const MARCH_GRAIN_FAR := 6
+const LEVY_GRAIN := 8
+const LEVY_MORALE := 4
+const SPEND_SILVER := 6
+const SPEND_MORALE := 6
+const TRAIN_SILVER := 5
+const TRAIN_GRAIN := 4
+const TRAIN_TROOPS := 4
+const CONSOLIDATE_TROOPS := 4
+const HOLD_PCT := 130
+const YUAN_ATK_PCT := 125
+const WIN_RATIO_PCT := 112
+const LOSE_RATIO_PCT := 88
 
 ## far=true 表示大纲里的远邻（大同—宁远）。
 const ROUTES: Array[Dictionary] = [
@@ -42,10 +59,6 @@ const ROUTES: Array[Dictionary] = [
 	{"a": "C4", "b": "C6", "far": false},
 	{"a": "C6", "b": "C5", "far": false},
 ]
-
-const STORY_IDLE := "M1 将在此接入：切换场景 → 抉择 → 写回。按下只说明流程，不改局面。"
-const STORY_PRESSED := "已点占位：切换场景 → 抉择 → 写回策略变量 → 返回大地图。\nS1 登基夜、S2 袁崇焕生死、S3 京师危机尚未接入。\n银两、粮草、民心、辽东稳固、后金压力、世界线偏移、袁崇焕仍为初值。"
-
 
 static func city_by_id(id: String) -> Dictionary:
 	for city in CITIES:
