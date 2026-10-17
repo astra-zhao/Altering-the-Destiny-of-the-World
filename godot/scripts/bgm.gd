@@ -1,13 +1,17 @@
 extends Node
-## 四条循环：地图、简战、剧情、结局。WAV sample，静音关 BGM 总线。
+## 四条循环：地图、简战、剧情、结局。程序生成 WAV，静音关 BGM 总线，主音量走 Master。
 
 var muted := false
 var mode := "map"
+## 0..1，1 是 0 dB。默认不满格，听得清，纯音不顶满。
+var master_linear := 0.8
 
 var _players: Dictionary = {}
 var _fade: Tween
+var _released := false
+var _quit_scheduled := false
 
-const _ACTIVE_DB := -8.0
+const _ACTIVE_DB := -4.0
 const _IDLE_DB := -80.0
 const _RATE := 22050
 const _FADE_SEC := 0.6
@@ -15,20 +19,24 @@ const _FADE_SEC := 0.6
 
 func _ready() -> void:
 	_ensure_bus()
-	_players["map"] = _make_player(_wav("map"), _ACTIVE_DB)
-	_players["battle"] = _make_player(_wav("battle"), _IDLE_DB)
-	_players["story"] = _make_player(_wav("story"), _IDLE_DB)
-	_players["ending"] = _make_player(_wav("ending"), _IDLE_DB)
-	# Dummy 驱动播不了 sample，而且本来就没有声卡。真驱动用 sample，停止时会马上释放，退出才不会报播放泄漏。
-	if AudioServer.get_driver_name() != "Dummy":
-		for key in _players:
-			(_players[key] as AudioStreamPlayer).play()
+	set_master_linear(master_linear)
+	_players["map"] = _make_player("map", _wav("map"), _ACTIVE_DB)
+	_players["battle"] = _make_player("battle", _wav("battle"), _IDLE_DB)
+	_players["story"] = _make_player("story", _wav("story"), _IDLE_DB)
+	_players["ending"] = _make_player("ending", _wav("ending"), _IDLE_DB)
+	for key in _players:
+		(_players[key] as AudioStreamPlayer).play()
+
+
+func track(kind: String) -> AudioStreamPlayer:
+	return _players.get(kind) as AudioStreamPlayer
 
 
 func set_mode(next: String) -> void:
 	if not _players.has(next):
 		return
 	if next == mode:
+		_keep_playing()
 		return
 	mode = next
 	if _fade != null and _fade.is_valid():
@@ -38,6 +46,16 @@ func set_mode(next: String) -> void:
 	for key in _players:
 		var db := _ACTIVE_DB if key == mode else _IDLE_DB
 		_fade.tween_property(_players[key], "volume_db", db, _FADE_SEC)
+	_keep_playing()
+
+
+func set_master_linear(value: float) -> void:
+	master_linear = clampf(value, 0.0, 1.0)
+	var idx := AudioServer.get_bus_index("Master")
+	if idx < 0:
+		return
+	var db := -80.0 if master_linear <= 0.001 else linear_to_db(master_linear)
+	AudioServer.set_bus_volume_db(idx, db)
 
 
 func set_muted(value: bool) -> void:
@@ -52,11 +70,33 @@ func toggle_muted() -> bool:
 	return muted
 
 
-func _exit_tree() -> void:
-	_release_players()
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_WM_CLOSE_REQUEST:
+		return
+	# 通知先于 close_requested。先关掉自动退出，等音频线程把 Stream 淡出删掉再 quit，
+	# 否则退出时会漏掉 WAV 和 playback。
+	var tree := get_tree()
+	if tree != null:
+		tree.auto_accept_quit = false
+	_schedule_quit()
 
 
-func _release_players() -> void:
+func _schedule_quit() -> void:
+	if _quit_scheduled:
+		return
+	_quit_scheduled = true
+	release_playback()
+	var timer := get_tree().create_timer(0.35)
+	timer.timeout.connect(func() -> void:
+		if is_inside_tree():
+			get_tree().quit()
+	)
+
+
+func release_playback() -> void:
+	if _released:
+		return
+	_released = true
 	if _fade != null and _fade.is_valid():
 		_fade.kill()
 		_fade = null
@@ -65,6 +105,18 @@ func _release_players() -> void:
 		if player == null:
 			continue
 		player.stop()
+		player.stream = null
+
+
+func _exit_tree() -> void:
+	release_playback()
+
+
+func _keep_playing() -> void:
+	for key in _players:
+		var player := _players[key] as AudioStreamPlayer
+		if player != null and not player.playing:
+			player.play()
 
 
 func _ensure_bus() -> void:
@@ -76,12 +128,16 @@ func _ensure_bus() -> void:
 	AudioServer.set_bus_send(idx, "Master")
 
 
-func _make_player(stream: AudioStreamWAV, volume_db: float) -> AudioStreamPlayer:
+func _make_player(kind: String, stream: AudioStreamWAV, volume_db: float) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
+	player.name = "Track_%s" % kind
 	player.stream = stream
 	player.volume_db = volume_db
 	player.bus = "BGM"
-	player.playback_type = AudioServer.PLAYBACK_TYPE_SAMPLE
+	# CoreAudio（编辑器 F5 和 macOS .app）没有 sample 播放。强制 SAMPLE 时
+	# AudioServer 只警告 "driver doesn't support sample playback"，混音器不出力。
+	# STREAM 才走 audio_server_process，声卡听得到。Dummy 无头也能进入 playing。
+	player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	add_child(player)
 	return player
 

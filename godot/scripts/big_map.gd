@@ -60,6 +60,8 @@ func _style_chrome() -> void:
 	%SubtitleLabel.add_theme_color_override("font_color", Color(0.78, 0.70, 0.58))
 	%HintLabel.add_theme_font_size_override("font_size", 13)
 	%HintLabel.add_theme_color_override("font_color", Color(0.75, 0.68, 0.56))
+	%VolumeLabel.add_theme_font_size_override("font_size", 14)
+	%VolumeLabel.add_theme_color_override("font_color", Color(0.86, 0.80, 0.68))
 	%HudHeading.add_theme_font_size_override("font_size", 18)
 	%HudHeading.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78))
 	%DetailTitle.add_theme_font_size_override("font_size", 20)
@@ -143,6 +145,8 @@ func _connect_actions() -> void:
 	%LoadButton.pressed.connect(_on_load)
 	%NewButton.pressed.connect(_on_new_game)
 	%MuteButton.pressed.connect(_on_mute)
+	%VolumeSlider.value = Bgm.master_linear
+	%VolumeSlider.value_changed.connect(_on_volume)
 	%MarchButton.tooltip_text = "相邻明军城之间移兵，留 1 守军。耗粮 3，远邻耗粮 6。"
 	%AttackButton.tooltip_text = "攻打相邻敌城，留 1 守军，进入简战。"
 	%HoldButton.tooltip_text = "选中的明军城本回合防御 ×1.3。"
@@ -407,6 +411,10 @@ func _open_ending() -> void:
 func _on_mute() -> void:
 	Bgm.toggle_muted()
 	_refresh()
+
+
+func _on_volume(value: float) -> void:
+	Bgm.set_master_linear(value)
 
 
 func _update_buttons() -> void:
